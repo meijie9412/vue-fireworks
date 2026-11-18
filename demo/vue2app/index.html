@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><title>Vue2 薄壳测试</title>
+<style>
+  body{margin:0;height:100vh;overflow:hidden;font-family:-apple-system,'PingFang SC',sans-serif;background:radial-gradient(ellipse at 50% 120%,#1b2a5e,transparent 60%),linear-gradient(#05060f,#0a1030 60%,#05060f);color:#dce6ff}
+  #app{position:relative;height:100%}
+  .box{position:fixed;top:16px;left:16px;z-index:30;background:rgba(12,18,40,.85);border:1px solid rgba(120,150,220,.25);border-radius:14px;padding:16px;width:260px}
+  .box h2{margin:0 0 4px;font-size:15px}
+  .box .stat{font-size:12px;color:#9fb4ee;margin-bottom:12px}
+  button{width:100%;padding:10px;margin-top:8px;border:none;border-radius:8px;background:linear-gradient(135deg,#ff7a45,#ff3d6e);color:#fff;font-weight:700;cursor:pointer}
+  button.alt{background:linear-gradient(135deg,#5a6cff,#3d9bff)}
+  #result{position:fixed;bottom:20px;left:16px;z-index:30;font-size:12px;color:#7fe0a0;background:rgba(0,0,0,.4);padding:8px 12px;border-radius:8px}
+</style></head>
+<body>
+<div id="app">
+  <vue-fireworks ref="fw" :show.sync="show" :glow="true" :trail="true" shape="star" :count="90" @start="onStart" @end="onEnd"></vue-fireworks>
+  <div class="box">
+    <h2>Vue 2 薄壳测试</h2>
+    <div class="stat">show = {{ show }} · 事件: {{ events.join(',') || '—' }}</div>
+    <button @click="show = true">.sync 触发</button>
+    <button class="alt" @click="$refs.fw.fire({ origin: { x: 900, y: 250 } })">ref.fire 固定位置</button>
+    <button class="alt" @click="$refs.fw.stop()">ref.stop 停止</button>
+  </div>
+</div>
+<div id="result">MOUNTED_PENDING</div>
+<script type="module">
+import Vue from 'vue'
+import VueFireworks from '../../dist/index.js'
+
+new Vue({
+  el: '#app',
+  components: { VueFireworks },
+  data: { show: false, events: [] },
+  methods: {
+    onStart () { this.events.push('start') },
+    onEnd () { this.events.push('end') }
+  },
+  mounted () {
+    window.__vue2 = this
+    document.getElementById('result').textContent = 'VUE2_MOUNTED_OK'
+    setTimeout(() => { this.show = true }, 400)
+  }
+})
+</script>
+</body></html>

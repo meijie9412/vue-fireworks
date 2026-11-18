@@ -1,0 +1,17 @@
+# 依赖
+node_modules/
+**/node_modules/
+
+# 临时/缓存
+*.log
+.DS_Store
+.vite/
+*.tgz
+
+# 环境变量与密钥
+.env
+.env.*
+.npmrc
+
+# 测试覆盖率
+coverage/
