@@ -68,6 +68,9 @@ export default {
 | `shape` | String | `'rect'` | 粒子形状：`rect` / `circle` / `star` |
 | `origin` | String \| Object | `'center'` | 绽放原点，`'center'` 或 `{ x, y }`（canvas 内 CSS 像素） |
 | `followMouse` | Boolean | `false` | 跟随鼠标绽放，优先级高于 `origin` |
+| `bursts` | Number | `1` | 一次触发连续绽放几朵（1 = 单朵，最大 50） |
+| `burstInterval` | Number | `280` | 相邻两朵的间隔(ms) |
+| `loop` | Boolean | `false` | 循环连放，直到 `stop()` / `show=false` |
 | `gravity` | Number | `0.12` | 重力加速度 |
 | `friction` | Number | `0.985` | 空气阻力（速度衰减） |
 | `spread` | Number | `5` | 爆炸初速度上限 |
@@ -88,6 +91,24 @@ export default {
 ```vue
 <VueFireworks v-model:show="show" :followMouse="true" />
 ```
+
+### 连发与循环
+
+一次触发连续绽放多朵，每朵随机分布在画布上（此时 `origin` / `followMouse` 忽略）：
+
+```vue
+<!-- 一次放 5 朵，间隔 300ms -->
+<VueFireworks v-model:show="show" :bursts="5" :burstInterval="300" />
+```
+
+循环连放像一场持续烟花秀，直到调用 `stop()` 或把 `show` 设为 `false`：
+
+```vue
+<VueFireworks ref="fw" v-model:show="show" :bursts="3" :loop="true" />
+<button @click="$refs.fw.stop()">停止</button>
+```
+
+> 通过 `ref.fire({ origin })` 指定落点、或点击画布时，会强制单朵绽放（连发/循环不生效），保证"点哪爆哪"的确定性。
 
 ## 事件
 

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>vue-fireworks 0.2.1 引擎测试</title>
+<title>vue-fireworks 0.3.0 引擎测试</title>
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif; }
@@ -44,10 +44,13 @@
 <body>
 <div id="stage"><canvas id="c"></canvas></div>
 <div class="panel">
-  <h2>🎆 vue-fireworks 0.2.1</h2>
+  <h2>🎆 vue-fireworks 0.3.0</h2>
   <div class="ver">纯引擎测试 · <span class="badge" id="mode">center</span></div>
   <div class="row"><label>形状</label><select id="shape"><option value="rect">方块 rect</option><option value="circle">圆形 circle</option><option value="star">星形 star</option></select></div>
   <div class="row"><label>粒子数</label><input type="range" id="count" min="20" max="200" value="80"><span class="val" id="countV">80</span></div>
+  <div class="row"><label>连发朵数</label><input type="range" id="bursts" min="1" max="20" value="1"><span class="val" id="burstsV">1</span></div>
+  <div class="row"><label>间隔(ms)</label><input type="range" id="burstInterval" min="80" max="1000" step="20" value="280"><span class="val" id="burstIntervalV">280</span></div>
+  <div class="row"><label>循环连放</label><input type="checkbox" id="loop"></div>
   <div class="row"><label>爆炸力度</label><input type="range" id="spread" min="2" max="12" value="6"><span class="val" id="spreadV">6</span></div>
   <div class="row"><label>粒子尺寸</label><input type="range" id="size" min="2" max="10" value="4"><span class="val" id="sizeV">4</span></div>
   <div class="row"><label>重力</label><input type="range" id="gravity" min="0" max="40" value="12"><span class="val" id="gravityV">.12</span></div>
@@ -83,6 +86,9 @@ const bind = (id, key, valId, fmt) => {
 }
 bind('shape', 'shape')
 bind('count', 'count', 'countV')
+bind('bursts', 'bursts', 'burstsV')
+bind('burstInterval', 'burstInterval', 'burstIntervalV')
+bind('loop', 'loop')
 bind('spread', 'spread', 'spreadV')
 bind('size', 'size', 'sizeV')
 bind('gravity', 'gravity', 'gravityV', v => (v / 100).toFixed(2))
@@ -186,7 +192,8 @@ $('pos').addEventListener('change', e => {
   }
 })
 
-const doFire = (pt) => engine.fire(pt ? { origin: pt, followMouse: false } : {})
+// 点击画布 = 单朵定位绽放；按钮 = 遵循面板的连发/循环配置
+const doFire = (pt) => engine.fire(pt ? { origin: pt, followMouse: false, bursts: 1, loop: false } : {})
 $('fire').addEventListener('click', () => doFire())
 $('c').addEventListener('click', e => doFire({ x: e.clientX, y: e.clientY }))
 

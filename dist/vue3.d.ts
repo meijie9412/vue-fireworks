@@ -30,6 +30,12 @@ export interface FireworksOptions {
   origin?: FireworksOrigin
   /** 跟随鼠标（优先级高于 origin），默认 false */
   followMouse?: boolean
+  /** 一次触发连续绽放几朵（1 = 单朵），默认 1，最大 50 */
+  bursts?: number
+  /** 相邻两朵的间隔(ms)，默认 280 */
+  burstInterval?: number
+  /** 循环连放，直到 stop()/show=false，默认 false */
+  loop?: boolean
   /** 帧率，默认 60 */
   fps?: number
 }

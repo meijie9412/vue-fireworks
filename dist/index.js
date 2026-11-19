@@ -13,6 +13,9 @@ const s = [
   "duration",
   "origin",
   "followMouse",
+  "bursts",
+  "burstInterval",
+  "loop",
   "fps"
 ], n = {
   name: "VueFireworks",
@@ -30,6 +33,9 @@ const s = [
     duration: { type: Number },
     origin: { type: [String, Object] },
     followMouse: { type: Boolean },
+    bursts: { type: Number, default: 1 },
+    burstInterval: { type: Number, default: 280 },
+    loop: { type: Boolean, default: !1 },
     fps: { type: Number }
   },
   data() {

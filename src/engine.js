@@ -16,8 +16,13 @@ const DEFAULTS = {
   duration: 90,             // 粒子最大寿命(帧)
   origin: 'center',         // 'center' | { x, y }，(x,y) 为 CSS 像素坐标
   followMouse: false,       // 跟随鼠标
+  bursts: 1,                // 一次触发连续绽放几朵（1 = 单朵，保持兼容）
+  burstInterval: 280,       // 相邻两朵的间隔(ms)
+  loop: false,              // 循环连放，直到 stop()/show=false
   fps: 60
 }
+
+const MAX_BURSTS = 50       // 连发数上限，防止配置过大卡死
 
 export class FireworksEngine {
   constructor (canvas, options = {}) {
@@ -37,6 +42,12 @@ export class FireworksEngine {
     this.accumulator = 0
     this.mousePoint = null
     this.onEnd = null
+
+    // 连发调度状态
+    this.burstTimers = []       // 待触发的 setTimeout 句柄
+    this.pendingBursts = 0      // 已排期还未绽放的朵数
+    this.cycleOptions = null    // 当前一轮的配置快照（loop 复用）
+    this.loopActive = false
 
     this._onMouseMove = this._onMouseMove.bind(this)
     this._loop = this._loop.bind(this)
@@ -60,32 +71,23 @@ export class FireworksEngine {
   /** 触发一轮烟花。overrides 可临时覆盖配置。 */
   fire (overrides = {}) {
     const o = { ...this.options, ...overrides }
-    const origin = this._resolveOrigin(o)
+    // 显式指定落点 = 确定性单朵（点哪爆哪），连发/循环自动让位
+    if (overrides.origin !== undefined) {
+      o.bursts = 1
+      o.loop = false
+    }
+    this.cycleOptions = o
+    this.loopActive = !!o.loop
 
-    // 重新触发时清空旧粒子，避免叠加竞态
+    // 重新触发时清空旧粒子与旧定时器，避免叠加竞态
+    this._clearBurstTimers()
     this.particles = []
     this.finished = false
     this.frame = 0
     this.lastTime = 0
     this.accumulator = 0
 
-    for (let i = 0; i < o.count; i++) {
-      const angle = Math.random() * Math.PI * 2
-      // 初速度带随机大小，形成爆炸层次
-      const speed = o.spread * (0.35 + Math.random() * 0.65)
-      this.particles.push({
-        x: origin.x,
-        y: origin.y,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - 1.5, // 略微上抛
-        color: o.colors[Math.floor(Math.random() * o.colors.length)],
-        size: o.size * (0.6 + Math.random() * 0.8),
-        life: 0,
-        maxLife: o.duration * (0.75 + Math.random() * 0.5),
-        rotation: Math.random() * Math.PI * 2,
-        spin: (Math.random() - 0.5) * 0.2
-      })
-    }
+    this._scheduleCycle()
 
     if (!this.running) {
       this.running = true
@@ -93,8 +95,10 @@ export class FireworksEngine {
     }
   }
 
-  /** 立即停止并清空 */
+  /** 立即停止并清空（含所有待触发的连发定时器） */
   stop () {
+    this.loopActive = false
+    this._clearBurstTimers()
     this._teardown()
     this._clear()
   }
@@ -105,6 +109,75 @@ export class FireworksEngine {
     window.removeEventListener('resize', this._resize)
     this._unbindMouse()
     this.onEnd = null
+  }
+
+  // ---------- 连发调度 ----------
+
+  /** 按 bursts/burstInterval 排期一轮绽放 */
+  _scheduleCycle () {
+    const o = this.cycleOptions
+    if (!o) return
+    const bursts = Math.max(1, Math.min(MAX_BURSTS, o.bursts || 1))
+    const interval = Math.max(16, o.burstInterval || 280)
+
+    for (let i = 0; i < bursts; i++) {
+      if (i === 0) {
+        // 第一朵立即绽放
+        this._spawnBurst()
+      } else {
+        this.pendingBursts++
+        const timer = setTimeout(() => {
+          this.burstTimers = this.burstTimers.filter(t => t !== timer)
+          this.pendingBursts = Math.max(0, this.pendingBursts - 1)
+          this._spawnBurst()
+        }, interval * i)
+        this.burstTimers.push(timer)
+      }
+    }
+  }
+
+  /** 绽放单朵：随机落点，生成 count 个粒子 */
+  _spawnBurst () {
+    const o = this.cycleOptions || this.options
+    // 连发时随机落点（避开边缘留白）；单朵用原 origin 逻辑
+    const bursts = Math.max(1, Math.min(MAX_BURSTS, o.bursts || 1))
+    const origin = bursts > 1
+      ? this._randomOrigin()
+      : this._resolveOrigin(o)
+
+    for (let i = 0; i < o.count; i++) {
+      const angle = Math.random() * Math.PI * 2
+      const speed = o.spread * (0.35 + Math.random() * 0.65)
+      this.particles.push({
+        x: origin.x,
+        y: origin.y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 1.5,
+        color: o.colors[Math.floor(Math.random() * o.colors.length)],
+        size: o.size * (0.6 + Math.random() * 0.8),
+        life: 0,
+        maxLife: o.duration * (0.75 + Math.random() * 0.5),
+        rotation: Math.random() * Math.PI * 2,
+        spin: (Math.random() - 0.5) * 0.2
+      })
+    }
+  }
+
+  /** 连发随机落点：距边缘留 12% 边距，保证整朵可见 */
+  _randomOrigin () {
+    const padX = this.cssWidth * 0.12
+    const padY = this.cssHeight * 0.15
+    return {
+      x: padX + Math.random() * Math.max(1, this.cssWidth - padX * 2),
+      y: padY + Math.random() * Math.max(1, this.cssHeight - padY * 2)
+    }
+  }
+
+  /** 清空所有待触发定时器 */
+  _clearBurstTimers () {
+    for (const t of this.burstTimers) clearTimeout(t)
+    this.burstTimers = []
+    this.pendingBursts = 0
   }
 
   // ---------- private ----------
@@ -170,11 +243,17 @@ export class FireworksEngine {
     this._render()
     this.frame++
 
-    if (this.particles.length === 0) {
-      this._teardown()
-      this._clear()
-      if (typeof this.onEnd === 'function') this.onEnd()
-      return
+    const idle = this.particles.length === 0 && this.pendingBursts === 0
+    if (idle) {
+      if (this.loopActive) {
+        // 循环模式：一轮结束，排期下一轮（不触发 onEnd）
+        this._scheduleCycle()
+      } else {
+        this._teardown()
+        this._clear()
+        if (typeof this.onEnd === 'function') this.onEnd()
+        return
+      }
     }
     this.rafId = requestAnimationFrame(this._loop)
   }
@@ -311,6 +390,8 @@ export class FireworksEngine {
 
   _teardown () {
     this.running = false
+    this.loopActive = false
+    this._clearBurstTimers()
     if (this.rafId !== null) {
       cancelAnimationFrame(this.rafId)
       this.rafId = null

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { installDomMock } from './dom-mock.js'
 
 const { makeCanvas } = installDomMock()
@@ -142,5 +142,107 @@ describe('FireworksEngine — 颜色与发光贴图', () => {
     expect(a).toBe(b)
     expect(c).not.toBe(a)
     expect(e._glowCache.size).toBe(2)
+  })
+})
+
+describe('FireworksEngine — 连发与循环', () => {
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => { vi.useRealTimers() })
+
+  it('bursts=1 保持单朵，落在 resolved origin（向后兼容）', () => {
+    const e = newEngine({ count: 4, origin: { x: 50, y: 60 } })
+    e.fire()
+    expect(e.particles).toHaveLength(4)
+    expect(e.particles.every(p => p.x === 50 && p.y === 60)).toBe(true)
+    expect(e.burstTimers).toHaveLength(0)
+  })
+
+  it('bursts=3 立即绽放第一朵，其余按间隔排期', () => {
+    const e = newEngine({ count: 4, bursts: 3, burstInterval: 300 })
+    e.fire()
+    // 第一朵立即生成
+    expect(e.particles).toHaveLength(4)
+    expect(e.pendingBursts).toBe(2)
+    expect(e.burstTimers).toHaveLength(2)
+    // 到 300ms 第二朵绽放
+    vi.advanceTimersByTime(300)
+    expect(e.particles).toHaveLength(8)
+    expect(e.pendingBursts).toBe(1)
+    // 到 600ms 第三朵绽放
+    vi.advanceTimersByTime(300)
+    expect(e.particles).toHaveLength(12)
+    expect(e.pendingBursts).toBe(0)
+    expect(e.burstTimers).toHaveLength(0)
+  })
+
+  it('连发随机落点：多朵原点互不相同（随机分布）', () => {
+    const e = newEngine({ count: 1, bursts: 5, burstInterval: 100 })
+    e.fire()
+    const firstX = e.particles[0].x
+    vi.advanceTimersByTime(100)
+    const secondX = e.particles[e.particles.length - 1].x
+    // 随机落点几乎不可能完全相同
+    expect(secondX).not.toBe(firstX)
+    // 落点应在留白边距内
+    for (const p of e.particles) {
+      expect(p.x).toBeGreaterThanOrEqual(0)
+      expect(p.x).toBeLessThanOrEqual(1280)
+    }
+  })
+
+  it('fire 显式传 origin 时强制单朵，忽略连发/循环（点哪爆哪）', () => {
+    const e = newEngine({ count: 2, bursts: 5, loop: true })
+    e.fire({ origin: { x: 11, y: 22 } })
+    expect(e.cycleOptions.bursts).toBe(1)
+    expect(e.cycleOptions.loop).toBe(false)
+    expect(e.burstTimers).toHaveLength(0)
+    expect(e.particles).toHaveLength(2)
+    expect(e.particles.every(p => p.x === 11 && p.y === 22)).toBe(true)
+  })
+
+  it('bursts 超过上限被钳制到 50，防止卡死', () => {
+    const e = newEngine({ count: 1, bursts: 9999, burstInterval: 1 })
+    e.fire()
+    // 第一朵立即 + 49 个排期 = 最多 50 个定时器
+    expect(e.burstTimers.length).toBeLessThanOrEqual(49)
+  })
+
+  it('stop 清空所有待触发定时器与粒子', () => {
+    const e = newEngine({ count: 4, bursts: 5, burstInterval: 500 })
+    e.fire()
+    expect(e.burstTimers).toHaveLength(4)
+    e.stop()
+    expect(e.burstTimers).toHaveLength(0)
+    expect(e.pendingBursts).toBe(0)
+    expect(e.particles).toHaveLength(0)
+    // 再推进时间不应有粒子冒出来
+    vi.advanceTimersByTime(5000)
+    expect(e.particles).toHaveLength(0)
+  })
+
+  it('重复 fire 取消上一轮的待触发定时器（竞态修复）', () => {
+    const e = newEngine({ count: 1, bursts: 5, burstInterval: 500 })
+    e.fire()
+    expect(e.burstTimers).toHaveLength(4)
+    e.fire({ bursts: 2 })
+    expect(e.burstTimers).toHaveLength(1)
+    expect(e.pendingBursts).toBe(1)
+  })
+
+  it('loop=true 时一轮结束后自动排期下一轮，不触发 onEnd', () => {
+    const e = newEngine({ count: 2, bursts: 1, loop: true })
+    const onEnd = vi.fn()
+    e.onEnd = onEnd
+    e.fire()
+    expect(e.loopActive).toBe(true)
+    // 模拟粒子全部消散后的 idle 判定：清空粒子、pendingBursts 应为 0
+    e.particles = []
+    e.pendingBursts = 0
+    // 直接调用 _loop 的 idle 分支逻辑（通过一次带时间戳的调用）
+    e._loop(performance.now())
+    // 循环模式重新排期了第一朵，粒子非空，onEnd 未触发
+    expect(e.loopActive).toBe(true)
+    expect(e.particles.length).toBeGreaterThan(0)
+    expect(onEnd).not.toHaveBeenCalled()
   })
 })
