@@ -1,26 +1,28 @@
 # @meijie/vue-fireworks
 
+English | [中文](https://github.com/meijie9412/vue-fireworks/blob/main/README.zh-CN.md)
+
 [![npm version](https://img.shields.io/npm/v/@meijie/vue-fireworks.svg)](https://www.npmjs.com/package/@meijie/vue-fireworks)
 [![license](https://img.shields.io/npm/l/@meijie/vue-fireworks.svg)](./LICENSE)
 
-基于 Canvas 的烟花/礼花特效组件。支持 **Vue 2.6+** 与 **Vue 3**，粒子数量、颜色、形状、绽放位置、拖尾、发光全部可配置，支持**固定位置绽放**与**跟随鼠标**。
+A canvas-based fireworks / firework-display component for **Vue 2.6+** and **Vue 3**. Particle count, colors, shape, burst position, trails and glow are all configurable. Supports **fixed-position bursts**, **mouse following**, **multi-burst sequences with looping**, and a realistic **launch phase** powered by projectile physics.
 
-## 安装
+## Installation
 
 ```bash
 npm i @meijie/vue-fireworks
 ```
 
-`vue` 为 peerDependency，需项目中已安装 Vue 2.6+ 或 Vue 3。
+`vue` is a peer dependency — Vue 2.6+ or Vue 3 must already be installed in your project.
 
-## 快速开始
+## Quick start
 
-### Vue 3（`v-model:show`）
+### Vue 3 (`v-model:show`)
 
 ```vue
 <template>
   <VueFireworks v-model:show="show" :glow="true" :trail="true" shape="star" />
-  <button @click="show = true">放烟花</button>
+  <button @click="show = true">Launch</button>
 </template>
 
 <script setup>
@@ -30,16 +32,16 @@ const show = ref(false)
 </script>
 ```
 
-### Vue 2（`.sync`）
+### Vue 2 (`.sync`)
 
 ```vue
 <template>
   <VueFireworks :show.sync="show" :glow="true" />
-  <button @click="show = true">放烟花</button>
+  <button @click="show = true">Launch</button>
 </template>
 
 <script>
-import VueFireworks from '@meijie/vue-fireworks' // 或 '/vue2'
+import VueFireworks from '@meijie/vue-fireworks' // or '/vue2'
 export default {
   components: { VueFireworks },
   data: () => ({ show: false })
@@ -47,109 +49,109 @@ export default {
 </script>
 ```
 
-播放完毕组件会自动把 `show` 置回 `false`，可连续触发。
+When playback finishes, the component automatically resets `show` to `false`, so it can be triggered repeatedly.
 
-## 导入路径
+## Import paths
 
-| 路径 | 用途 |
+| Path | Purpose |
 |---|---|
-| `@meijie/vue-fireworks` | 默认 = Vue 2 版本（兼容老用户） |
-| `@meijie/vue-fireworks/vue2` | Vue 2 显式入口 |
-| `@meijie/vue-fireworks/vue3` | Vue 3 入口 |
-| `@meijie/vue-fireworks/engine` | 纯 JS 引擎，脱离 Vue 直接用 |
+| `@meijie/vue-fireworks` | Default = Vue 2 build (backwards compatible) |
+| `@meijie/vue-fireworks/vue2` | Explicit Vue 2 entry |
+| `@meijie/vue-fireworks/vue3` | Vue 3 entry |
+| `@meijie/vue-fireworks/engine` | Plain-JS engine, usable without Vue |
 
 ## Props
 
-| 属性 | 类型 | 默认值 | 说明 |
+| Prop | Type | Default | Description |
 |---|---|---|---|
-| `show` | Boolean | `false` | 显示/触发，配合 `.sync`（Vue2）或 `v-model:show`（Vue3） |
-| `count` | Number | `60` | 每轮粒子数量 |
-| `colors` | String[] | `['#FF8201','#2DA6E0','#FF262B']` | 粒子颜色池 |
-| `shape` | String | `'rect'` | 粒子形状：`rect` / `circle` / `star` |
-| `origin` | String \| Object | `'center'` | 绽放原点，`'center'` 或 `{ x, y }`（canvas 内 CSS 像素） |
-| `followMouse` | Boolean | `false` | 跟随鼠标绽放，优先级高于 `origin` |
-| `bursts` | Number | `1` | 一次触发连续绽放几朵（1 = 单朵，最大 50） |
-| `burstInterval` | Number | `280` | 相邻两朵的间隔(ms) |
-| `loop` | Boolean | `false` | 循环连放，直到 `stop()` / `show=false` |
-| `launch` | Boolean | `false` | 是否显示发射过程（弹丸升空后绽放） |
-| `launchDuration` | Number | `1200` | 弹丸升空时长(ms) |
-| `launchFrom` | String \| Object | `'below'` | 发射起点：`'below'`(绽放点正下方底边) / `'center'` / `{ x, y }` |
-| `gravity` | Number | `0.12` | 重力加速度 |
-| `friction` | Number | `0.985` | 空气阻力（速度衰减） |
-| `spread` | Number | `5` | 爆炸初速度上限 |
-| `size` | Number | `4` | 粒子尺寸(px) |
-| `duration` | Number | `90` | 粒子最大寿命(帧) |
-| `trail` | Boolean | `false` | 拖尾残影 |
-| `glow` | Boolean | `false` | 发光效果 |
-| `fps` | Number | `60` | 渲染帧率 |
+| `show` | Boolean | `false` | Show / trigger. Pair with `.sync` (Vue 2) or `v-model:show` (Vue 3). |
+| `count` | Number | `60` | Number of particles per burst |
+| `colors` | String[] | `['#FF8201','#2DA6E0','#FF262B']` | Particle color pool (one picked at random per particle) |
+| `shape` | String | `'rect'` | Particle shape: `rect` / `circle` / `star` |
+| `origin` | String \| Object | `'center'` | Burst origin: `'center'` or `{ x, y }` (CSS pixels inside the canvas) |
+| `followMouse` | Boolean | `false` | Burst at the mouse position; takes precedence over `origin` |
+| `bursts` | Number | `1` | Number of consecutive bursts per trigger (`1` = single, max `50`) |
+| `burstInterval` | Number | `280` | Interval between adjacent bursts, in ms |
+| `loop` | Boolean | `false` | Keep launching bursts until `stop()` or `show=false` |
+| `launch` | Boolean | `false` | Show the launch phase (a rocket rises, then bursts) |
+| `launchDuration` | Number | `1200` | Rocket ascent time, in ms |
+| `launchFrom` | String \| Object | `'below'` | Launch origin: `'below'` (bottom edge directly under the burst point) / `'center'` / `{ x, y }` |
+| `gravity` | Number | `0.12` | Gravity acceleration |
+| `friction` | Number | `0.985` | Air drag (velocity damping) |
+| `spread` | Number | `5` | Maximum initial explosion speed |
+| `size` | Number | `4` | Particle size in px |
+| `duration` | Number | `90` | Maximum particle lifetime in frames |
+| `trail` | Boolean | `false` | Motion trail (afterimage) |
+| `glow` | Boolean | `false` | Glow effect |
+| `fps` | Number | `60` | Render frame rate |
 
-### 固定位置绽放
+### Fixed-position burst
 
 ```vue
 <VueFireworks v-model:show="show" :origin="{ x: 300, y: 200 }" />
 ```
 
-### 跟随鼠标
+### Follow the mouse
 
 ```vue
 <VueFireworks v-model:show="show" :followMouse="true" />
 ```
 
-### 连发与循环
+### Multiple bursts and looping
 
-一次触发连续绽放多朵，每朵随机分布在画布上（此时 `origin` / `followMouse` 忽略）：
+Launch several bursts in a row, each at a random position on the canvas (`origin` / `followMouse` are ignored in this mode):
 
 ```vue
-<!-- 一次放 5 朵，间隔 300ms -->
+<!-- 5 bursts, 300ms apart -->
 <VueFireworks v-model:show="show" :bursts="5" :burstInterval="300" />
 ```
 
-循环连放像一场持续烟花秀，直到调用 `stop()` 或把 `show` 设为 `false`：
+Looping keeps a continuous show going until you call `stop()` or set `show` to `false`:
 
 ```vue
 <VueFireworks ref="fw" v-model:show="show" :bursts="3" :loop="true" />
-<button @click="$refs.fw.stop()">停止</button>
+<button @click="$refs.fw.stop()">Stop</button>
 ```
 
-> 通过 `ref.fire({ origin })` 指定落点、或点击画布时，会强制单朵绽放（连发/循环不生效），保证"点哪爆哪"的确定性。
+> Calling `ref.fire({ origin })` with an explicit origin, or clicking the canvas, always forces a **single** burst (multi-burst and looping are disabled) — so "click here, burst here" stays deterministic.
 
-### 发射过程
+### Launch phase
 
-开启后，弹丸会从绽放点正下方升空，拖着尾焰减速上升，抵达顶点才绽放——完整的真实烟花流程：
+When enabled, a rocket rises from below the burst point, decelerating under gravity and trailing sparks, then bursts at its apex — a complete, realistic firework sequence:
 
 ```vue
 <VueFireworks v-model:show="show" :launch="true" :launchDuration="700" />
 ```
 
-发射起点默认是绽放点正下方的画布底边，可改为底部中央或自定义坐标：
+The launch origin defaults to the bottom edge directly beneath the burst point. It can be changed to bottom-center or an arbitrary coordinate:
 
 ```vue
 <VueFireworks v-model:show="show" :launch="true" launchFrom="center" />
 <VueFireworks v-model:show="show" :launch="true" :launchFrom="{ x: 100, y: 780 }" />
 ```
 
-发射与连发/循环可叠加：每朵都会各自发射升空、依次绽放。
+Launch works together with multi-burst and looping: each firework rises independently and bursts in turn.
 
-## 事件
+## Events
 
-| 事件 | 说明 |
+| Event | Description |
 |---|---|
-| `update:show` | 播放结束时触发，用于同步 `show` 为 `false` |
-| `start` | 开始播放时触发 |
-| `end` | 播放结束时触发 |
+| `update:show` | Fired when playback ends; used to sync `show` back to `false` |
+| `start` | Fired when playback starts |
+| `end` | Fired when playback ends |
 
-## 命令式方法（ref）
+## Imperative methods (ref)
 
 ```vue
 <VueFireworks ref="fw" />
 <script setup>
 const fw = ref()
-fw.value.fire({ origin: { x: 100, y: 100 }, count: 100 }) // 带临时配置触发
-fw.value.stop()                                            // 立即停止
+fw.value.fire({ origin: { x: 100, y: 100 }, count: 100 }) // trigger with temporary overrides
+fw.value.stop()                                            // stop immediately
 </script>
 ```
 
-## 脱离 Vue 使用引擎
+## Using the engine without Vue
 
 ```js
 import { FireworksEngine } from '@meijie/vue-fireworks/engine'
@@ -159,26 +161,26 @@ engine.fire()
 // engine.setOptions({ shape: 'star' }); engine.stop(); engine.destroy()
 ```
 
-## 开发
+## Development
 
 ```bash
 npm install
-npm test        # Vitest 单元测试
-npm run build   # 构建 dist/（ESM + CJS + 类型声明）
+npm test        # Vitest unit tests
+npm run build   # build dist/ (ESM + CJS + type declarations)
 ```
 
-项目结构：`src/engine.js` 为纯 JS 粒子引擎（不依赖 Vue），`src/vue2.js` / `src/vue3.js` 为框架薄壳，三者共用一份核心。
+Layout: `src/engine.js` is a plain-JS particle engine with no Vue dependency; `src/vue2.js` and `src/vue3.js` are thin framework wrappers. All three share one core.
 
-## 发布
+## Publishing
 
-发布由 GitHub Actions 通过 npm Trusted Publishing (OIDC) 自动完成，无需本地 token。维护者推送版本标签即触发：
+Releases are published automatically by GitHub Actions via npm Trusted Publishing (OIDC) — no local token required (a Trusted Publisher must first be configured on npmjs.com). Once configured, pushing a version tag triggers the workflow:
 
 ```bash
-git tag v0.2.1
-git push origin v0.2.1
+git tag v0.4.0
+git push origin v0.4.0
 ```
 
-workflow 会依次执行 `npm ci` → `npm run build` → `npm test` → `npm publish`。
+The workflow runs `npm ci` → `npm run build` → `npm test` → `npm publish`.
 
 ## License
 
