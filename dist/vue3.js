@@ -1,7 +1,7 @@
-import { h as s } from "vue";
+import { h as o } from "vue";
 import { FireworksEngine as r } from "./engine.js";
 import { e as a } from "./shared-shared-es.js";
-const o = [
+const s = [
   "count",
   "colors",
   "shape",
@@ -17,8 +17,11 @@ const o = [
   "bursts",
   "burstInterval",
   "loop",
+  "launch",
+  "launchDuration",
+  "launchFrom",
   "fps"
-], n = {
+], i = {
   name: "VueFireworks",
   props: {
     show: { type: Boolean, default: !1 },
@@ -37,6 +40,9 @@ const o = [
     bursts: { type: Number, default: 1 },
     burstInterval: { type: Number, default: 280 },
     loop: { type: Boolean, default: !1 },
+    launch: { type: Boolean, default: !1 },
+    launchDuration: { type: Number, default: 500 },
+    launchFrom: { type: [String, Object], default: "below" },
     fps: { type: Number }
   },
   emits: ["update:show", "start", "end"],
@@ -47,9 +53,9 @@ const o = [
     show(e) {
       e ? this.fire() : this.engine && this.engine.stop();
     },
-    ...o.reduce((e, t) => (e[t] = {
-      handler(i) {
-        this.engine && this.engine.setOptions({ [t]: i });
+    ...s.reduce((e, t) => (e[t] = {
+      handler(n) {
+        this.engine && this.engine.setOptions({ [t]: n });
       }
     }, e), {})
   },
@@ -64,9 +70,9 @@ const o = [
   methods: {
     _engineOptions() {
       const e = {};
-      for (const t of o) {
-        const i = this[t];
-        i !== void 0 && (e[t] = i);
+      for (const t of s) {
+        const n = this[t];
+        n !== void 0 && (e[t] = n);
       }
       return e;
     },
@@ -78,7 +84,7 @@ const o = [
     }
   },
   render() {
-    return s("div", {
+    return o("div", {
       class: "fireworks-container",
       style: {
         position: "fixed",
@@ -87,16 +93,16 @@ const o = [
         pointerEvents: this.followMouse ? "none" : "auto"
       }
     }, [
-      s("canvas", {
+      o("canvas", {
         ref: "canvas",
         style: { width: "100%", height: "100%", display: "block" }
       })
     ]);
   }
 };
-n.install = function(e) {
-  e.component(n.name, n);
+i.install = function(e) {
+  e.component(i.name, i);
 };
 export {
-  n as default
+  i as default
 };

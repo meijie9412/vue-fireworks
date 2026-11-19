@@ -8,7 +8,8 @@ import { emitUpdate } from './shared.js'
 const PROP_KEYS = [
   'count', 'colors', 'shape', 'gravity', 'friction', 'spread',
   'size', 'trail', 'glow', 'duration', 'origin', 'followMouse',
-  'bursts', 'burstInterval', 'loop', 'fps'
+  'bursts', 'burstInterval', 'loop',
+  'launch', 'launchDuration', 'launchFrom', 'fps'
 ]
 
 const VueFireworks = {
@@ -30,6 +31,9 @@ const VueFireworks = {
     bursts: { type: Number, default: 1 },
     burstInterval: { type: Number, default: 280 },
     loop: { type: Boolean, default: false },
+    launch: { type: Boolean, default: false },
+    launchDuration: { type: Number, default: 500 },
+    launchFrom: { type: [String, Object], default: 'below' },
     fps: { type: Number }
   },
   data () {

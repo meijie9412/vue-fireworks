@@ -1,6 +1,6 @@
 {
   "name": "@meijie/vue-fireworks",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Canvas 礼花/烟花特效组件，支持 Vue 2 与 Vue 3，可配置粒子数、颜色、形状、固定位置、跟随鼠标、拖尾与发光。",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

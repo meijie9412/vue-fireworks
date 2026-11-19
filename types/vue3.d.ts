@@ -36,6 +36,12 @@ export interface FireworksOptions {
   burstInterval?: number
   /** 循环连放，直到 stop()/show=false，默认 false */
   loop?: boolean
+  /** 是否显示发射过程（弹丸升空后绽放），默认 false */
+  launch?: boolean
+  /** 弹丸升空时长(ms)，默认 500 */
+  launchDuration?: number
+  /** 发射起点：'below'(绽放点正下方底边) | 'center' | {x,y}，默认 'below' */
+  launchFrom?: 'below' | 'center' | { x: number; y: number }
   /** 帧率，默认 60 */
   fps?: number
 }

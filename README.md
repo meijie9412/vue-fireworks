@@ -71,6 +71,9 @@ export default {
 | `bursts` | Number | `1` | 一次触发连续绽放几朵（1 = 单朵，最大 50） |
 | `burstInterval` | Number | `280` | 相邻两朵的间隔(ms) |
 | `loop` | Boolean | `false` | 循环连放，直到 `stop()` / `show=false` |
+| `launch` | Boolean | `false` | 是否显示发射过程（弹丸升空后绽放） |
+| `launchDuration` | Number | `500` | 弹丸升空时长(ms) |
+| `launchFrom` | String \| Object | `'below'` | 发射起点：`'below'`(绽放点正下方底边) / `'center'` / `{ x, y }` |
 | `gravity` | Number | `0.12` | 重力加速度 |
 | `friction` | Number | `0.985` | 空气阻力（速度衰减） |
 | `spread` | Number | `5` | 爆炸初速度上限 |
@@ -109,6 +112,23 @@ export default {
 ```
 
 > 通过 `ref.fire({ origin })` 指定落点、或点击画布时，会强制单朵绽放（连发/循环不生效），保证"点哪爆哪"的确定性。
+
+### 发射过程
+
+开启后，弹丸会从绽放点正下方升空，拖着尾焰减速上升，抵达顶点才绽放——完整的真实烟花流程：
+
+```vue
+<VueFireworks v-model:show="show" :launch="true" :launchDuration="700" />
+```
+
+发射起点默认是绽放点正下方的画布底边，可改为底部中央或自定义坐标：
+
+```vue
+<VueFireworks v-model:show="show" :launch="true" launchFrom="center" />
+<VueFireworks v-model:show="show" :launch="true" :launchFrom="{ x: 100, y: 780 }" />
+```
+
+发射与连发/循环可叠加：每朵都会各自发射升空、依次绽放。
 
 ## 事件
 

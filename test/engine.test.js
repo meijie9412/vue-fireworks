@@ -229,6 +229,71 @@ describe('FireworksEngine — 连发与循环', () => {
     expect(e.pendingBursts).toBe(1)
   })
 
+  it('launch=true 时先发射弹丸，不立即产生粒子', () => {
+    const e = newEngine({ count: 6, launch: true, launchDuration: 300, origin: { x: 100, y: 200 } })
+    e.fire()
+    expect(e.rockets).toHaveLength(1)
+    expect(e.particles).toHaveLength(0)
+    const r = e.rockets[0]
+    // 起点在目标正下方底边（mock 高度 800）
+    expect(r.startX).toBe(100)
+    expect(r.startY).toBe(800)
+    expect(r.targetX).toBe(100)
+    expect(r.targetY).toBe(200)
+  })
+
+  it('弹丸按进度上升，抵达后绽放并移除', () => {
+    const e = newEngine({ count: 6, launch: true, launchDuration: 300, fps: 60, origin: { x: 100, y: 200 } })
+    e.fire()
+    const r = e.rockets[0]
+    expect(r.frames).toBeCloseTo(18) // 300ms / (1000/60) = 18 帧
+    // 推进一半进度
+    for (let i = 0; i < 9; i++) e._update()
+    expect(e.rockets).toHaveLength(1)
+    expect(r.progress).toBeGreaterThan(0.4)
+    expect(r.y).toBeLessThan(800) // 已离开底部
+    expect(e.particles).toHaveLength(0) // 还没绽放
+    // 推进到刚好抵达（弹丸清空即绽放瞬间，粒子尚未移动）
+    for (let i = 0; i < 12 && e.rockets.length > 0; i++) e._update()
+    expect(e.rockets).toHaveLength(0)
+    expect(e.particles).toHaveLength(6) // 绽放出粒子
+    // 粒子从目标点(100,200)炸开，一帧内位移有限，应仍在目标附近
+    expect(e.particles.every(p => Math.abs(p.x - 100) < 20 && Math.abs(p.y - 200) < 20)).toBe(true)
+  })
+
+  it('launchFrom=center 从底部中央发射', () => {
+    const e = newEngine({ launch: true, launchFrom: 'center', origin: { x: 500, y: 200 } })
+    e.fire()
+    expect(e.rockets[0].startX).toBe(640) // mock 宽 1280 的中点
+    expect(e.rockets[0].startY).toBe(800)
+  })
+
+  it('launchFrom 自定义坐标', () => {
+    const e = newEngine({ launch: true, launchFrom: { x: 30, y: 700 }, origin: { x: 500, y: 200 } })
+    e.fire()
+    expect(e.rockets[0].startX).toBe(30)
+    expect(e.rockets[0].startY).toBe(700)
+  })
+
+  it('stop 清空飞行中的弹丸', () => {
+    const e = newEngine({ launch: true, origin: { x: 100, y: 200 } })
+    e.fire()
+    expect(e.rockets).toHaveLength(1)
+    e.stop()
+    expect(e.rockets).toHaveLength(0)
+  })
+
+  it('launch=true 的 idle 判定纳入弹丸（弹丸在飞时不结束）', () => {
+    const e = newEngine({ count: 6, launch: true, origin: { x: 100, y: 200 } })
+    const onEnd = vi.fn()
+    e.onEnd = onEnd
+    e.fire()
+    // 弹丸在飞、粒子为空，不应触发结束
+    expect(e.particles).toHaveLength(0)
+    expect(e.rockets).toHaveLength(1)
+    expect(onEnd).not.toHaveBeenCalled()
+  })
+
   it('loop=true 时一轮结束后自动排期下一轮，不触发 onEnd', () => {
     const e = newEngine({ count: 2, bursts: 1, loop: true })
     const onEnd = vi.fn()

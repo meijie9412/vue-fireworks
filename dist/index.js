@@ -16,8 +16,11 @@ const s = [
   "bursts",
   "burstInterval",
   "loop",
+  "launch",
+  "launchDuration",
+  "launchFrom",
   "fps"
-], n = {
+], i = {
   name: "VueFireworks",
   props: {
     show: { type: Boolean, default: !1 },
@@ -36,6 +39,9 @@ const s = [
     bursts: { type: Number, default: 1 },
     burstInterval: { type: Number, default: 280 },
     loop: { type: Boolean, default: !1 },
+    launch: { type: Boolean, default: !1 },
+    launchDuration: { type: Number, default: 500 },
+    launchFrom: { type: [String, Object], default: "below" },
     fps: { type: Number }
   },
   data() {
@@ -47,8 +53,8 @@ const s = [
     },
     // 深层配置变化时同步给引擎
     ...s.reduce((e, t) => (e[t] = {
-      handler(i) {
-        this.engine && this.engine.setOptions({ [t]: i });
+      handler(n) {
+        this.engine && this.engine.setOptions({ [t]: n });
       }
     }, e), {})
   },
@@ -64,8 +70,8 @@ const s = [
     _engineOptions() {
       const e = {};
       for (const t of s) {
-        const i = this[t];
-        i !== void 0 && (e[t] = i);
+        const n = this[t];
+        n !== void 0 && (e[t] = n);
       }
       return e;
     },
@@ -93,9 +99,9 @@ const s = [
     ]);
   }
 };
-n.install = function(e) {
-  e.component(n.name, n);
+i.install = function(e) {
+  e.component(i.name, i);
 };
 export {
-  n as default
+  i as default
 };

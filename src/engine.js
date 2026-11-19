@@ -19,6 +19,9 @@ const DEFAULTS = {
   bursts: 1,                // 一次触发连续绽放几朵（1 = 单朵，保持兼容）
   burstInterval: 280,       // 相邻两朵的间隔(ms)
   loop: false,              // 循环连放，直到 stop()/show=false
+  launch: false,            // 是否显示发射过程（弹丸升空后绽放）
+  launchDuration: 500,      // 弹丸升空时长(ms)
+  launchFrom: 'below',      // 'below' | 'center' | { x, y }
   fps: 60
 }
 
@@ -34,6 +37,7 @@ export class FireworksEngine {
 
     this.options = { ...DEFAULTS, ...options }
     this.particles = []
+    this.rockets = []           // 飞行中的弹丸
     this.rafId = null
     this.running = false
     this.finished = false
@@ -79,9 +83,10 @@ export class FireworksEngine {
     this.cycleOptions = o
     this.loopActive = !!o.loop
 
-    // 重新触发时清空旧粒子与旧定时器，避免叠加竞态
+    // 重新触发时清空旧粒子/弹丸/定时器，避免叠加竞态
     this._clearBurstTimers()
     this.particles = []
+    this.rockets = []
     this.finished = false
     this.frame = 0
     this.lastTime = 0
@@ -113,7 +118,7 @@ export class FireworksEngine {
 
   // ---------- 连发调度 ----------
 
-  /** 按 bursts/burstInterval 排期一轮绽放 */
+  /** 按 bursts/burstInterval 排期一轮发射/绽放 */
   _scheduleCycle () {
     const o = this.cycleOptions
     if (!o) return
@@ -123,28 +128,67 @@ export class FireworksEngine {
     for (let i = 0; i < bursts; i++) {
       if (i === 0) {
         // 第一朵立即绽放
-        this._spawnBurst()
+        this._launchOrBurst()
       } else {
         this.pendingBursts++
         const timer = setTimeout(() => {
           this.burstTimers = this.burstTimers.filter(t => t !== timer)
           this.pendingBursts = Math.max(0, this.pendingBursts - 1)
-          this._spawnBurst()
+          this._launchOrBurst()
         }, interval * i)
         this.burstTimers.push(timer)
       }
     }
   }
 
-  /** 绽放单朵：随机落点，生成 count 个粒子 */
-  _spawnBurst () {
+  /**
+   * 绽放一朵：若开启 launch，先发射弹丸升空、抵达后再绽放；否则立即绽放。
+   * 落点在此刻确定（连发随机 / 单朵按 origin），供弹丸与绽放共用。
+   */
+  _launchOrBurst () {
     const o = this.cycleOptions || this.options
-    // 连发时随机落点（避开边缘留白）；单朵用原 origin 逻辑
     const bursts = Math.max(1, Math.min(MAX_BURSTS, o.bursts || 1))
     const origin = bursts > 1
       ? this._randomOrigin()
       : this._resolveOrigin(o)
 
+    if (o.launch) {
+      this._spawnRocket(origin, o)
+    } else {
+      this._spawnBurstAt(origin, o)
+    }
+  }
+
+  /** 发射一枚弹丸，从起点减速上升至绽放点 */
+  _spawnRocket (target, o) {
+    const start = this._resolveLaunchOrigin(target, o)
+    const frames = Math.max(1, (o.launchDuration || 500) / (1000 / (o.fps || 60)))
+    const color = o.colors[Math.floor(Math.random() * o.colors.length)]
+    this.rockets.push({
+      x: start.x,
+      y: start.y,
+      startX: start.x,
+      startY: start.y,
+      targetX: target.x,
+      targetY: target.y,
+      progress: 0,
+      frames,
+      color,
+      tail: []   // 拖尾历史点
+    })
+  }
+
+  /** 计算发射起点：默认目标正下方底边 */
+  _resolveLaunchOrigin (target, o) {
+    const from = o.launchFrom || 'below'
+    if (from === 'center') return { x: this.cssWidth / 2, y: this.cssHeight }
+    if (from && typeof from === 'object') return { x: from.x, y: from.y }
+    // 'below'：目标正下方的画布底边
+    return { x: target.x, y: this.cssHeight }
+  }
+
+  /** 在指定落点绽放 count 个粒子 */
+  _spawnBurstAt (origin, o) {
     for (let i = 0; i < o.count; i++) {
       const angle = Math.random() * Math.PI * 2
       const speed = o.spread * (0.35 + Math.random() * 0.65)
@@ -243,7 +287,7 @@ export class FireworksEngine {
     this._render()
     this.frame++
 
-    const idle = this.particles.length === 0 && this.pendingBursts === 0
+    const idle = this.particles.length === 0 && this.rockets.length === 0 && this.pendingBursts === 0
     if (idle) {
       if (this.loopActive) {
         // 循环模式：一轮结束，排期下一轮（不触发 onEnd）
@@ -260,6 +304,23 @@ export class FireworksEngine {
 
   _update () {
     const { gravity, friction } = this.options
+
+    // 弹丸上升：easeOut 减速，抵达目标后绽放
+    for (let i = this.rockets.length - 1; i >= 0; i--) {
+      const r = this.rockets[i]
+      r.progress = Math.min(1, r.progress + 1 / r.frames)
+      const eased = 1 - Math.pow(1 - r.progress, 3) // easeOutCubic
+      r.x = r.startX + (r.targetX - r.startX) * eased
+      r.y = r.startY + (r.targetY - r.startY) * eased
+      r.tail.push({ x: r.x, y: r.y })
+      if (r.tail.length > 12) r.tail.shift()
+
+      if (r.progress >= 1) {
+        this._spawnBurstAt({ x: r.targetX, y: r.targetY }, this.cycleOptions || this.options)
+        this.rockets.splice(i, 1)
+      }
+    }
+
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i]
       p.vx *= friction
@@ -307,6 +368,23 @@ export class FireworksEngine {
       ctx.globalAlpha = alpha
       ctx.fillStyle = p.color
       this._drawShape(ctx, p, o.shape)
+    }
+
+    // 弹丸：拖尾线段（用历史点，不依赖画布残影）+ 亮头
+    for (const r of this.rockets) {
+      ctx.fillStyle = r.color
+      for (let i = 0; i < r.tail.length; i++) {
+        ctx.globalAlpha = (i / r.tail.length) * 0.6
+        const t = r.tail[i]
+        ctx.fillRect(t.x - 1, t.y - 1, 2, 2)
+      }
+      ctx.globalAlpha = 1
+      if (o.glow) {
+        const sprite = this._getGlowSprite(r.color)
+        const rad = 9
+        ctx.drawImage(sprite, r.x - rad, r.y - rad, rad * 2, rad * 2)
+      }
+      ctx.fillRect(r.x - 1.5, r.y - 1.5, 3, 5)
     }
 
     // 复原上下文状态，避免污染外部
@@ -397,6 +475,7 @@ export class FireworksEngine {
       this.rafId = null
     }
     this.particles = []
+    this.rockets = []
     this.finished = true
   }
 }
