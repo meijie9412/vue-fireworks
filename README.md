@@ -72,7 +72,7 @@ export default {
 | `burstInterval` | Number | `280` | 相邻两朵的间隔(ms) |
 | `loop` | Boolean | `false` | 循环连放，直到 `stop()` / `show=false` |
 | `launch` | Boolean | `false` | 是否显示发射过程（弹丸升空后绽放） |
-| `launchDuration` | Number | `500` | 弹丸升空时长(ms) |
+| `launchDuration` | Number | `1200` | 弹丸升空时长(ms) |
 | `launchFrom` | String \| Object | `'below'` | 发射起点：`'below'`(绽放点正下方底边) / `'center'` / `{ x, y }` |
 | `gravity` | Number | `0.12` | 重力加速度 |
 | `friction` | Number | `0.985` | 空气阻力（速度衰减） |

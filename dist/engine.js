@@ -31,13 +31,13 @@ const p = {
   // 循环连放，直到 stop()/show=false
   launch: !1,
   // 是否显示发射过程（弹丸升空后绽放）
-  launchDuration: 500,
+  launchDuration: 1200,
   // 弹丸升空时长(ms)
   launchFrom: "below",
   // 'below' | 'center' | { x, y }
   fps: 60
-}, u = 50;
-class g {
+}, f = 50;
+class m {
   constructor(t, e = {}) {
     if (!t)
       throw new Error("[vue-fireworks] canvas element is required");
@@ -69,7 +69,7 @@ class g {
     const t = this.cycleOptions;
     if (!t)
       return;
-    const e = Math.max(1, Math.min(u, t.bursts || 1)), i = Math.max(16, t.burstInterval || 280);
+    const e = Math.max(1, Math.min(f, t.bursts || 1)), i = Math.max(16, t.burstInterval || 280);
     for (let s = 0; s < e; s++)
       if (s === 0)
         this._launchOrBurst();
@@ -86,12 +86,12 @@ class g {
    * 落点在此刻确定（连发随机 / 单朵按 origin），供弹丸与绽放共用。
    */
   _launchOrBurst() {
-    const t = this.cycleOptions || this.options, i = Math.max(1, Math.min(u, t.bursts || 1)) > 1 ? this._randomOrigin() : this._resolveOrigin(t);
+    const t = this.cycleOptions || this.options, i = Math.max(1, Math.min(f, t.bursts || 1)) > 1 ? this._randomOrigin() : this._resolveOrigin(t);
     t.launch ? this._spawnRocket(i, t) : this._spawnBurstAt(i, t);
   }
-  /** 发射一枚弹丸，从起点减速上升至绽放点 */
+  /** 发射一枚弹丸：真实抛体运动，初速度向上、重力匀减速，顶点恰好绽放 */
   _spawnRocket(t, e) {
-    const i = this._resolveLaunchOrigin(t, e), s = Math.max(1, (e.launchDuration || 500) / (1e3 / (e.fps || 60))), o = e.colors[Math.floor(Math.random() * e.colors.length)];
+    const i = this._resolveLaunchOrigin(t, e), s = e.fps || 60, o = Math.max(1, (e.launchDuration || 1200) / (1e3 / s)), r = t.y - i.y, a = (t.x - i.x) / o, n = 2 * r / o, h = -2 * r / (o * o), l = e.colors[Math.floor(Math.random() * e.colors.length)], c = Math.min(10, Math.abs(r) * 0.02) * (Math.random() * 0.5 + 0.5), u = Math.random() * Math.PI * 2;
     this.rockets.push({
       x: i.x,
       y: i.y,
@@ -99,11 +99,18 @@ class g {
       startY: i.y,
       targetX: t.x,
       targetY: t.y,
+      vx: a,
+      vy: n,
+      ay: h,
+      swayAmp: c,
+      swayPhase: u,
       progress: 0,
-      frames: s,
-      color: o,
-      tail: []
+      frames: o,
+      color: l,
+      tail: [],
       // 拖尾历史点
+      sparks: []
+      // 尾迹火花
     });
   }
   /** 计算发射起点：默认目标正下方底边 */
@@ -189,8 +196,23 @@ class g {
     for (let i = this.rockets.length - 1; i >= 0; i--) {
       const s = this.rockets[i];
       s.progress = Math.min(1, s.progress + 1 / s.frames);
-      const o = 1 - Math.pow(1 - s.progress, 3);
-      s.x = s.startX + (s.targetX - s.startX) * o, s.y = s.startY + (s.targetY - s.startY) * o, s.tail.push({ x: s.x, y: s.y }), s.tail.length > 12 && s.tail.shift(), s.progress >= 1 && (this._spawnBurstAt({ x: s.targetX, y: s.targetY }, this.cycleOptions || this.options), this.rockets.splice(i, 1));
+      const o = s.progress;
+      s.x = s.startX + s.vx * (o * s.frames) + Math.sin(o * Math.PI * 3 + s.swayPhase) * s.swayAmp * (1 - o);
+      const r = o * s.frames;
+      s.y = s.startY + s.vy * r + 0.5 * s.ay * r * r, s.tail.push({ x: s.x, y: s.y }), s.tail.length > 18 && s.tail.shift(), o < 0.92 && Math.random() < 0.7 && s.sparks.push({
+        x: s.x + (Math.random() - 0.5) * 3,
+        y: s.y + 2,
+        vx: (Math.random() - 0.5) * 0.6,
+        vy: Math.random() * 0.5 + 0.2,
+        life: 0,
+        maxLife: 8 + Math.random() * 10,
+        size: 1 + Math.random() * 1.5
+      });
+      for (let a = s.sparks.length - 1; a >= 0; a--) {
+        const n = s.sparks[a];
+        n.x += n.vx, n.y += n.vy, n.life++, n.life >= n.maxLife && s.sparks.splice(a, 1);
+      }
+      s.progress >= 1 && (this._spawnBurstAt({ x: s.targetX, y: s.targetY }, this.cycleOptions || this.options), this.rockets.splice(i, 1));
     }
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const s = this.particles[i];
@@ -214,17 +236,21 @@ class g {
       t.globalAlpha = s, t.fillStyle = i.color, this._drawShape(t, i, e.shape);
     }
     for (const i of this.rockets) {
-      t.fillStyle = i.color;
-      for (let s = 0; s < i.tail.length; s++) {
-        t.globalAlpha = s / i.tail.length * 0.6;
-        const o = i.tail[s];
-        t.fillRect(o.x - 1, o.y - 1, 2, 2);
+      if (i.tail.length > 1) {
+        t.lineCap = "round";
+        for (let s = 1; s < i.tail.length; s++) {
+          const o = i.tail[s - 1], r = i.tail[s], a = s / i.tail.length;
+          t.globalAlpha = a * a * 0.8, t.strokeStyle = i.color, t.lineWidth = 0.5 + a * 2, t.beginPath(), t.moveTo(o.x, o.y), t.lineTo(r.x, r.y), t.stroke();
+        }
       }
+      t.fillStyle = i.color;
+      for (const s of i.sparks)
+        t.globalAlpha = (1 - s.life / s.maxLife) * 0.9, t.fillRect(s.x, s.y, s.size, s.size);
       if (t.globalAlpha = 1, e.glow) {
-        const s = this._getGlowSprite(i.color), o = 9;
+        const s = this._getGlowSprite(i.color), o = 10;
         t.drawImage(s, i.x - o, i.y - o, o * 2, o * 2);
       }
-      t.fillRect(i.x - 1.5, i.y - 1.5, 3, 5);
+      t.fillStyle = "#fff", t.fillRect(i.x - 1.5, i.y - 2.5, 3, 5);
     }
     t.globalAlpha = 1, t.globalCompositeOperation = "source-over";
   }
@@ -266,11 +292,11 @@ class g {
     }
     t.save(), t.translate(e.x, e.y), t.rotate(e.rotation), t.fillRect(-s / 2, -s / 2, s, s * 1.6), t.restore();
   }
-  _starPath(t, e, i, s, o, r, f) {
-    t.save(), t.translate(e, i), t.rotate(f), t.beginPath();
+  _starPath(t, e, i, s, o, r, a) {
+    t.save(), t.translate(e, i), t.rotate(a), t.beginPath();
     for (let n = 0; n < s * 2; n++) {
-      const h = n % 2 === 0 ? o : r, a = n * Math.PI / s - Math.PI / 2, l = Math.cos(a) * h, c = Math.sin(a) * h;
-      n === 0 ? t.moveTo(l, c) : t.lineTo(l, c);
+      const h = n % 2 === 0 ? o : r, l = n * Math.PI / s - Math.PI / 2, c = Math.cos(l) * h, u = Math.sin(l) * h;
+      n === 0 ? t.moveTo(c, u) : t.lineTo(c, u);
     }
     t.closePath(), t.restore();
   }
@@ -279,6 +305,6 @@ class g {
   }
 }
 export {
-  g as FireworksEngine,
-  g as default
+  m as FireworksEngine,
+  m as default
 };

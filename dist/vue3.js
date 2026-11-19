@@ -41,7 +41,7 @@ const s = [
     burstInterval: { type: Number, default: 280 },
     loop: { type: Boolean, default: !1 },
     launch: { type: Boolean, default: !1 },
-    launchDuration: { type: Number, default: 500 },
+    launchDuration: { type: Number, default: 1200 },
     launchFrom: { type: [String, Object], default: "below" },
     fps: { type: Number }
   },

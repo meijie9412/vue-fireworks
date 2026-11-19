@@ -20,7 +20,7 @@ const DEFAULTS = {
   burstInterval: 280,       // 相邻两朵的间隔(ms)
   loop: false,              // 循环连放，直到 stop()/show=false
   launch: false,            // 是否显示发射过程（弹丸升空后绽放）
-  launchDuration: 500,      // 弹丸升空时长(ms)
+  launchDuration: 1200,     // 弹丸升空时长(ms)
   launchFrom: 'below',      // 'below' | 'center' | { x, y }
   fps: 60
 }
@@ -159,11 +159,20 @@ export class FireworksEngine {
     }
   }
 
-  /** 发射一枚弹丸，从起点减速上升至绽放点 */
+  /** 发射一枚弹丸：真实抛体运动，初速度向上、重力匀减速，顶点恰好绽放 */
   _spawnRocket (target, o) {
     const start = this._resolveLaunchOrigin(target, o)
-    const frames = Math.max(1, (o.launchDuration || 500) / (1000 / (o.fps || 60)))
+    const fps = o.fps || 60
+    const frames = Math.max(1, (o.launchDuration || 1200) / (1000 / fps))
+    const dy = target.y - start.y          // 负值（向上）
+    const vx = (target.x - start.x) / frames
+    const vy0 = 2 * dy / frames            // 顶点速度归零所需的初速度
+    const ay = -2 * dy / (frames * frames) // 重力加速度（向下，为正）
     const color = o.colors[Math.floor(Math.random() * o.colors.length)]
+    // 横向轻微摇摆，幅度随上升衰减，模拟空气扰动
+    const swayAmp = Math.min(10, Math.abs(dy) * 0.02) * (Math.random() * 0.5 + 0.5)
+    const swayPhase = Math.random() * Math.PI * 2
+
     this.rockets.push({
       x: start.x,
       y: start.y,
@@ -171,10 +180,14 @@ export class FireworksEngine {
       startY: start.y,
       targetX: target.x,
       targetY: target.y,
+      vx, vy: vy0, ay,
+      swayAmp,
+      swayPhase,
       progress: 0,
       frames,
       color,
-      tail: []   // 拖尾历史点
+      tail: [],      // 拖尾历史点
+      sparks: []     // 尾迹火花
     })
   }
 
@@ -305,17 +318,44 @@ export class FireworksEngine {
   _update () {
     const { gravity, friction } = this.options
 
-    // 弹丸上升：easeOut 减速，抵达目标后绽放
+    // 弹丸上升：抛体物理（匀减速到顶点），抵达后绽放
     for (let i = this.rockets.length - 1; i >= 0; i--) {
       const r = this.rockets[i]
       r.progress = Math.min(1, r.progress + 1 / r.frames)
-      const eased = 1 - Math.pow(1 - r.progress, 3) // easeOutCubic
-      r.x = r.startX + (r.targetX - r.startX) * eased
-      r.y = r.startY + (r.targetY - r.startY) * eased
+      const p = r.progress
+      // 横向：匀速推进 + 随高度衰减的正弦摆动
+      r.x = r.startX + r.vx * (p * r.frames)
+        + Math.sin(p * Math.PI * 3 + r.swayPhase) * r.swayAmp * (1 - p)
+      // 纵向：y = y0 + v0*t + 0.5*a*t²（t 以帧计），匀减速，顶点速度归零
+      const t = p * r.frames
+      r.y = r.startY + r.vy * t + 0.5 * r.ay * t * t
+
+      // 拖尾历史点
       r.tail.push({ x: r.x, y: r.y })
-      if (r.tail.length > 12) r.tail.shift()
+      if (r.tail.length > 18) r.tail.shift()
+
+      // 尾迹火花：随机小火星，短命，向下飘散
+      if (p < 0.92 && Math.random() < 0.7) {
+        r.sparks.push({
+          x: r.x + (Math.random() - 0.5) * 3,
+          y: r.y + 2,
+          vx: (Math.random() - 0.5) * 0.6,
+          vy: Math.random() * 0.5 + 0.2,
+          life: 0,
+          maxLife: 8 + Math.random() * 10,
+          size: 1 + Math.random() * 1.5
+        })
+      }
+      for (let s = r.sparks.length - 1; s >= 0; s--) {
+        const sp = r.sparks[s]
+        sp.x += sp.vx
+        sp.y += sp.vy
+        sp.life++
+        if (sp.life >= sp.maxLife) r.sparks.splice(s, 1)
+      }
 
       if (r.progress >= 1) {
+        // 精确落在目标点，避免浮点累积误差
         this._spawnBurstAt({ x: r.targetX, y: r.targetY }, this.cycleOptions || this.options)
         this.rockets.splice(i, 1)
       }
@@ -370,21 +410,39 @@ export class FireworksEngine {
       this._drawShape(ctx, p, o.shape)
     }
 
-    // 弹丸：拖尾线段（用历史点，不依赖画布残影）+ 亮头
+    // 弹丸：平滑渐隐尾迹（历史点连成渐变线）+ 火花 + 亮头
     for (const r of this.rockets) {
-      ctx.fillStyle = r.color
-      for (let i = 0; i < r.tail.length; i++) {
-        ctx.globalAlpha = (i / r.tail.length) * 0.6
-        const t = r.tail[i]
-        ctx.fillRect(t.x - 1, t.y - 1, 2, 2)
+      // 尾迹：逐段连线，越靠近弹丸越亮越粗
+      if (r.tail.length > 1) {
+        ctx.lineCap = 'round'
+        for (let i = 1; i < r.tail.length; i++) {
+          const a = r.tail[i - 1]
+          const b = r.tail[i]
+          const f = i / r.tail.length
+          ctx.globalAlpha = f * f * 0.8
+          ctx.strokeStyle = r.color
+          ctx.lineWidth = 0.5 + f * 2
+          ctx.beginPath()
+          ctx.moveTo(a.x, a.y)
+          ctx.lineTo(b.x, b.y)
+          ctx.stroke()
+        }
       }
+      // 火花
+      ctx.fillStyle = r.color
+      for (const sp of r.sparks) {
+        ctx.globalAlpha = (1 - sp.life / sp.maxLife) * 0.9
+        ctx.fillRect(sp.x, sp.y, sp.size, sp.size)
+      }
+      // 亮头
       ctx.globalAlpha = 1
       if (o.glow) {
         const sprite = this._getGlowSprite(r.color)
-        const rad = 9
+        const rad = 10
         ctx.drawImage(sprite, r.x - rad, r.y - rad, rad * 2, rad * 2)
       }
-      ctx.fillRect(r.x - 1.5, r.y - 1.5, 3, 5)
+      ctx.fillStyle = '#fff'
+      ctx.fillRect(r.x - 1.5, r.y - 2.5, 3, 5)
     }
 
     // 复原上下文状态，避免污染外部

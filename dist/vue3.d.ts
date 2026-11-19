@@ -38,7 +38,7 @@ export interface FireworksOptions {
   loop?: boolean
   /** 是否显示发射过程（弹丸升空后绽放），默认 false */
   launch?: boolean
-  /** 弹丸升空时长(ms)，默认 500 */
+  /** 弹丸升空时长(ms)，默认 1200 */
   launchDuration?: number
   /** 发射起点：'below'(绽放点正下方底边) | 'center' | {x,y}，默认 'below' */
   launchFrom?: 'below' | 'center' | { x: number; y: number }

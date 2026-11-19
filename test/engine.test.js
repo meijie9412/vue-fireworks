@@ -261,6 +261,27 @@ describe('FireworksEngine — 连发与循环', () => {
     expect(e.particles.every(p => Math.abs(p.x - 100) < 20 && Math.abs(p.y - 200) < 20)).toBe(true)
   })
 
+  it('抛体物理：上升位移逐帧递减，顶点精确落在目标', () => {
+    const e = newEngine({ count: 4, launch: true, launchDuration: 600, fps: 60, origin: { x: 200, y: 150 } })
+    e.fire()
+    const r = e.rockets[0]
+    const ys = [r.y]
+    for (let i = 0; i < 36 && e.rockets.length > 0; i++) {
+      e._update()
+      if (e.rockets.length > 0) ys.push(e.rockets[0].y)
+    }
+    // 每帧位移（负值，向上）绝对值应递减：匀减速
+    const steps = []
+    for (let i = 1; i < ys.length; i++) steps.push(Math.abs(ys[i] - ys[i - 1]))
+    for (let i = 1; i < steps.length; i++) {
+      expect(steps[i]).toBeLessThanOrEqual(steps[i - 1] + 0.01)
+    }
+    // 弹丸已抵达并绽放，粒子落在精确目标点附近
+    expect(e.rockets).toHaveLength(0)
+    expect(e.particles.length).toBeGreaterThan(0)
+    expect(e.particles.every(p => Math.abs(p.x - 200) < 20 && Math.abs(p.y - 150) < 20)).toBe(true)
+  })
+
   it('launchFrom=center 从底部中央发射', () => {
     const e = newEngine({ launch: true, launchFrom: 'center', origin: { x: 500, y: 200 } })
     e.fire()
