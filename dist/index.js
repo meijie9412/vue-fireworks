@@ -1,6 +1,6 @@
-import { FireworksEngine as o } from "./engine.js";
-import { e as r } from "./shared-shared-es.js";
-const s = [
+import { FireworksEngine as r } from "@meijie/fireworks-core";
+import { e as s } from "./shared-shared-es.js";
+const i = [
   "count",
   "colors",
   "shape",
@@ -19,14 +19,23 @@ const s = [
   "launch",
   "launchDuration",
   "launchFrom",
-  "fps"
-], i = {
+  "fps",
+  "preset",
+  "secondary",
+  "secondaryAt",
+  "colorMode",
+  "sound",
+  "volume",
+  "text",
+  "shockwave",
+  "fall"
+], o = {
   name: "VueFireworks",
   props: {
     show: { type: Boolean, default: !1 },
     count: { type: Number },
     colors: { type: Array },
-    shape: { type: String, validator: (e) => ["rect", "circle", "star"].includes(e) },
+    shape: { type: String, validator: (e) => ["rect", "circle", "star", "heart", "text"].includes(e) },
     gravity: { type: Number },
     friction: { type: Number },
     spread: { type: Number },
@@ -42,7 +51,17 @@ const s = [
     launch: { type: Boolean, default: !1 },
     launchDuration: { type: Number, default: 1200 },
     launchFrom: { type: [String, Object], default: "below" },
-    fps: { type: Number }
+    fps: { type: Number },
+    // 新配置不设 default：undefined 时跳过，避免 default 覆盖 preset 展开值
+    preset: { type: String },
+    secondary: { type: Number },
+    secondaryAt: { type: Number },
+    colorMode: { type: String, validator: (e) => ["random", "gradient"].includes(e) },
+    sound: { type: Boolean },
+    volume: { type: Number },
+    text: { type: String },
+    shockwave: { type: Number },
+    fall: { type: Boolean }
   },
   data() {
     return { engine: null };
@@ -52,15 +71,15 @@ const s = [
       e ? this.fire() : this.engine && this.engine.stop();
     },
     // 深层配置变化时同步给引擎
-    ...s.reduce((e, t) => (e[t] = {
+    ...i.reduce((e, t) => (e[t] = {
       handler(n) {
-        this.engine && this.engine.setOptions({ [t]: n });
+        n !== void 0 && this.engine && this.engine.setOptions({ [t]: n });
       }
     }, e), {})
   },
   mounted() {
-    this.engine = new o(this.$refs.canvas, this._engineOptions()), this.engine.onEnd = () => {
-      r(this, !1), this.$emit("end");
+    this.engine = new r(this.$refs.canvas, this._engineOptions()), this.engine.onEnd = () => {
+      s(this, !1), this.$emit("end");
     }, this.show && this.fire();
   },
   beforeDestroy() {
@@ -69,7 +88,7 @@ const s = [
   methods: {
     _engineOptions() {
       const e = {};
-      for (const t of s) {
+      for (const t of i) {
         const n = this[t];
         n !== void 0 && (e[t] = n);
       }
@@ -99,9 +118,9 @@ const s = [
     ]);
   }
 };
-i.install = function(e) {
-  e.component(i.name, i);
+o.install = function(e) {
+  e.component(o.name, o);
 };
 export {
-  i as default
+  o as default
 };
