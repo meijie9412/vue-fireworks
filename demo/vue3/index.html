@@ -3,40 +3,48 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>vue-fireworks 0.4.1 引擎测试</title>
+<title>vue-fireworks 0.5.0 引擎测试</title>
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif; }
   #stage { position: fixed; inset: 0; background: radial-gradient(ellipse at 50% 120%, #1b2a5e 0%, transparent 60%), linear-gradient(180deg,#05060f,#0a1030 60%,#05060f); }
   canvas { width: 100%; height: 100%; display: block; }
   .panel {
-    position: fixed; top: 16px; left: 16px; z-index: 20; width: 272px;
-    background: rgba(12,18,40,.82); backdrop-filter: blur(10px);
+    position: fixed; top: 16px; left: 16px; z-index: 20; width: 278px;
+    max-height: calc(100vh - 32px); overflow-y: auto;
+    background: rgba(12,18,40,.86); backdrop-filter: blur(10px);
     border: 1px solid rgba(120,150,220,.25); border-radius: 14px; padding: 16px;
     color: #dce6ff; box-shadow: 0 12px 40px rgba(0,0,0,.4);
   }
+  .panel::-webkit-scrollbar { width: 6px; }
+  .panel::-webkit-scrollbar-thumb { background: #33427a; border-radius: 3px; }
   .panel h2 { margin: 0 0 4px; font-size: 15px; letter-spacing: .5px; }
-  .panel .ver { font-size: 11px; color: #7f93c4; margin-bottom: 14px; }
-  .row { display: flex; align-items: center; justify-content: space-between; margin: 9px 0; font-size: 12px; }
+  .panel .ver { font-size: 11px; color: #7f93c4; margin-bottom: 12px; }
+  .sec { border-top: 1px solid rgba(120,150,220,.16); margin-top: 12px; padding-top: 10px; }
+  .sec .t { font-size: 10px; color: #6c7ba6; letter-spacing: 1px; margin-bottom: 8px; }
+  .row { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; font-size: 12px; }
   .row label { color: #a9b8dd; }
   .colors { margin: 10px 0 4px; }
   .colors .lbl { font-size: 12px; color: #a9b8dd; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
   .swatches { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
   .swatches input[type=color] { width: 30px; height: 30px; padding: 0; border: 1px solid #4456a0; border-radius: 6px; background: none; cursor: pointer; }
   .swatches button { width: 24px; height: 24px; border-radius: 6px; border: 1px dashed #4456a0; background: #1b2550; color: #9fb4ee; cursor: pointer; font-size: 14px; line-height: 1; }
-  .presets { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
-  .presets button { padding: 3px 7px; font-size: 10px; border: 1px solid #33427a; border-radius: 5px; background: #16204a; color: #a9b8dd; cursor: pointer; }
-  .presets button.on { background: #2b3a78; color: #fff; border-color: #5a6ec0; }
-  select, input[type=range] { background: #1b2550; color: #dce6ff; border: 1px solid #33427a; border-radius: 6px; }
+  .btns { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+  .btns button { padding: 4px 8px; font-size: 10px; border: 1px solid #33427a; border-radius: 5px; background: #16204a; color: #a9b8dd; cursor: pointer; }
+  .btns button.on { background: #2b3a78; color: #fff; border-color: #5a6ec0; }
+  .fx button { flex: 1; min-width: 60px; padding: 7px 4px; font-size: 11px; font-weight: 600; }
+  select, input[type=range], input[type=text] { background: #1b2550; color: #dce6ff; border: 1px solid #33427a; border-radius: 6px; }
   select { padding: 3px 6px; font-size: 12px; }
-  input[type=range] { width: 110px; }
-  .val { font-size: 11px; color: #ffce8a; width: 26px; text-align: right; }
+  input[type=range] { width: 108px; }
+  input[type=text] { width: 108px; padding: 3px 6px; font-size: 12px; }
+  .val { font-size: 11px; color: #ffce8a; width: 30px; text-align: right; }
   .fire {
     width: 100%; margin-top: 12px; padding: 11px; border: none; border-radius: 9px;
     background: linear-gradient(135deg,#ff7a45,#ff3d6e); color: #fff; font-weight: 700;
     font-size: 13px; cursor: pointer; box-shadow: 0 8px 22px rgba(255,80,110,.4);
   }
   .fire:active { transform: scale(.98); }
+  .stop { width: 100%; margin-top: 6px; padding: 7px; border: 1px solid #4456a0; border-radius: 8px; background: #16204a; color: #a9b8dd; font-size: 11px; cursor: pointer; }
   .tip { margin-top: 10px; font-size: 10px; color: #6c7ba6; line-height: 1.5; }
   .badge { display:inline-block; padding:1px 6px; border-radius:4px; background:#24305e; color:#9fb4ee; font-size:10px; }
 </style>
@@ -44,64 +52,105 @@
 <body>
 <div id="stage"><canvas id="c"></canvas></div>
 <div class="panel">
-  <h2>🎆 vue-fireworks 0.4.1</h2>
+  <h2>🎆 vue-fireworks 0.5.0</h2>
   <div class="ver">纯引擎测试 · <span class="badge" id="mode">center</span></div>
-  <div class="row"><label>形状</label><select id="shape"><option value="rect">方块 rect</option><option value="circle">圆形 circle</option><option value="star">星形 star</option></select></div>
-  <div class="row"><label>粒子数</label><input type="range" id="count" min="20" max="200" value="80"><span class="val" id="countV">80</span></div>
-  <div class="row"><label>连发朵数</label><input type="range" id="bursts" min="1" max="20" value="1"><span class="val" id="burstsV">1</span></div>
-  <div class="row"><label>间隔(ms)</label><input type="range" id="burstInterval" min="80" max="1000" step="20" value="280"><span class="val" id="burstIntervalV">280</span></div>
-  <div class="row"><label>循环连放</label><input type="checkbox" id="loop"></div>
-  <div class="row"><label>发射过程</label><input type="checkbox" id="launch"></div>
-  <div class="row"><label>升空时长</label><input type="range" id="launchDuration" min="200" max="1200" step="50" value="500"><span class="val" id="launchDurationV">500</span></div>
-  <div class="row"><label>爆炸力度</label><input type="range" id="spread" min="2" max="12" value="6"><span class="val" id="spreadV">6</span></div>
-  <div class="row"><label>粒子尺寸</label><input type="range" id="size" min="2" max="10" value="4"><span class="val" id="sizeV">4</span></div>
-  <div class="row"><label>重力</label><input type="range" id="gravity" min="0" max="40" value="12"><span class="val" id="gravityV">.12</span></div>
-  <div class="colors">
-    <div class="lbl"><span>粒子颜色</span><span class="val" id="colorCount">3 色</span></div>
-    <div class="swatches" id="swatches"></div>
-    <div class="presets" id="presets"></div>
+
+  <div class="sec"><div class="t">效果预设（一键切换）</div>
+    <div class="btns fx" id="fxpresets">
+      <button data-preset="show">烟花秀</button>
+      <button data-preset="salute">礼炮</button>
+      <button data-preset="waterfall">瀑布</button>
+      <button data-preset="">自定义</button>
+    </div>
   </div>
-  <div class="row"><label>拖尾</label><input type="checkbox" id="trail"></div>
-  <div class="row"><label>发光</label><input type="checkbox" id="glow" checked></div>
-  <div class="row"><label>位置</label><select id="pos"><option value="center">居中</option><option value="top-left">左上固定</option><option value="bottom-right">右下固定</option><option value="mouse">跟随鼠标</option></select></div>
+
+  <div class="sec"><div class="t">基本</div>
+    <div class="row"><label>形状</label><select id="shape"><option value="rect">方块 rect</option><option value="circle">圆形 circle</option><option value="star">星形 star</option><option value="heart">心形 heart</option><option value="text">文字 text</option></select></div>
+    <div class="row" id="textRow" style="display:none"><label>文字内容</label><input type="text" id="text" value="★" maxlength="4"></div>
+    <div class="row"><label>粒子数</label><input type="range" id="count" min="20" max="200" value="80"><span class="val" id="countV">80</span></div>
+    <div class="row"><label>爆炸力度</label><input type="range" id="spread" min="2" max="12" value="6"><span class="val" id="spreadV">6</span></div>
+    <div class="row"><label>粒子尺寸</label><input type="range" id="size" min="2" max="10" value="4"><span class="val" id="sizeV">4</span></div>
+    <div class="row"><label>重力</label><input type="range" id="gravity" min="0" max="40" value="12"><span class="val" id="gravityV">.12</span></div>
+  </div>
+
+  <div class="sec"><div class="t">颜色</div>
+    <div class="colors">
+      <div class="lbl"><span>粒子颜色</span><span class="val" id="colorCount">3 色</span></div>
+      <div class="swatches" id="swatches"></div>
+      <div class="btns" id="presets"></div>
+    </div>
+    <div class="row"><label>颜色渐变</label><input type="checkbox" id="colorMode"></div>
+  </div>
+
+  <div class="sec"><div class="t">连发与发射</div>
+    <div class="row"><label>连发朵数</label><input type="range" id="bursts" min="1" max="20" value="1"><span class="val" id="burstsV">1</span></div>
+    <div class="row"><label>间隔(ms)</label><input type="range" id="burstInterval" min="80" max="1000" step="20" value="280"><span class="val" id="burstIntervalV">280</span></div>
+    <div class="row"><label>循环连放</label><input type="checkbox" id="loop"></div>
+    <div class="row"><label>发射过程</label><input type="checkbox" id="launch"></div>
+    <div class="row"><label>升空时长</label><input type="range" id="launchDuration" min="200" max="1200" step="50" value="500"><span class="val" id="launchDurationV">500</span></div>
+  </div>
+
+  <div class="sec"><div class="t">高级效果</div>
+    <div class="row"><label>二次爆炸(粒子)</label><input type="range" id="secondary" min="0" max="30" value="0"><span class="val" id="secondaryV">0</span></div>
+    <div class="row"><label>冲击波(半径)</label><input type="range" id="shockwave" min="0" max="200" step="10" value="0"><span class="val" id="shockwaveV">0</span></div>
+    <div class="row"><label>音效</label><input type="checkbox" id="sound"></div>
+    <div class="row"><label>音量</label><input type="range" id="volume" min="0" max="100" value="35"><span class="val" id="volumeV">.35</span></div>
+    <div class="row"><label>瀑布模式</label><input type="checkbox" id="fall"></div>
+    <div class="row"><label>拖尾</label><input type="checkbox" id="trail"></div>
+    <div class="row"><label>发光</label><input type="checkbox" id="glow" checked></div>
+    <div class="row"><label>位置</label><select id="pos"><option value="center">居中</option><option value="top">顶部</option><option value="top-left">左上固定</option><option value="bottom-right">右下固定</option><option value="mouse">跟随鼠标</option></select></div>
+  </div>
+
   <button class="fire" id="fire">✦ 放烟花</button>
-  <div class="tip" id="tip">点击按钮触发 · 也可在画布任意位置点击绽放<br>色块左键改色 · 右键删除 · 预设一键切换</div>
+  <button class="stop" id="stop">■ 停止</button>
+  <div class="tip" id="tip">点击按钮触发 · 也可在画布任意位置点击绽放<br>色块左键改色 · 右键删除 · 预设一键切换<br>注：瀑布沿整条顶边洒落，无单一爆点，冲击波/发射对其不生效</div>
 </div>
 
 <script type="module">
-import { FireworksEngine } from '../../dist/engine.js'
+import { FireworksEngine, PRESETS } from '../../dist/engine.js'
 
 const engine = new FireworksEngine(document.getElementById('c'), {
   glow: true, count: 80, shape: 'rect', spread: 6, size: 4, gravity: 0.12
 })
 
 const $ = id => document.getElementById(id)
-const bind = (id, key, valId, fmt) => {
+const bind = (id, key, valId, fmt, transform) => {
   const el = $(id)
   el.addEventListener('input', () => {
     let v = el.value
     if (el.type === 'checkbox') v = el.checked
     else if (el.type === 'range') v = Number(v)
     if (valId) $(valId).textContent = fmt ? fmt(v) : v
-    engine.setOptions({ [key]: v })
+    engine.setOptions({ [key]: transform ? transform(v) : v })
+    markCustom()
   })
 }
 bind('shape', 'shape')
+bind('text', 'text')
 bind('count', 'count', 'countV')
+bind('spread', 'spread', 'spreadV')
+bind('size', 'size', 'sizeV')
+bind('gravity', 'gravity', 'gravityV', v => (v / 100).toFixed(2), v => v / 100)
 bind('bursts', 'bursts', 'burstsV')
 bind('burstInterval', 'burstInterval', 'burstIntervalV')
 bind('loop', 'loop')
 bind('launch', 'launch')
 bind('launchDuration', 'launchDuration', 'launchDurationV')
-bind('spread', 'spread', 'spreadV')
-bind('size', 'size', 'sizeV')
-bind('gravity', 'gravity', 'gravityV', v => (v / 100).toFixed(2))
-$('gravity').addEventListener('input', e => engine.setOptions({ gravity: Number(e.target.value) / 100 }))
+bind('secondary', 'secondary', 'secondaryV')
+bind('shockwave', 'shockwave', 'shockwaveV')
+bind('volume', 'volume', 'volumeV', v => (v / 100).toFixed(2), v => v / 100)
+bind('sound', 'sound')
+bind('fall', 'fall')
 bind('trail', 'trail')
 bind('glow', 'glow')
+bind('colorMode', 'colorMode')
 
-// ---- 颜色配置 ----
-const PRESETS = {
+$('shape').addEventListener('change', () => {
+  $('textRow').style.display = $('shape').value === 'text' ? 'flex' : 'none'
+})
+
+// ---- 粒子颜色预设（与效果预设独立） ----
+const COLOR_PRESETS = {
   '原版三色': ['#FF8201', '#2DA6E0', '#FF262B'],
   '金粉青': ['#FFD700', '#FF69B4', '#00FFFF'],
   '霓虹': ['#FF00FF', '#00FF9D', '#7B00FF', '#00E5FF'],
@@ -109,13 +158,12 @@ const PRESETS = {
   '极光': ['#00FFA3', '#3D7BFF', '#B06BFF', '#00E1FF'],
   '单色': ['#FF4D6D']
 }
-let colors = [...PRESETS['原版三色']]
-let activePreset = '原版三色'
+let colors = [...COLOR_PRESETS['原版三色']]
+let activeColorPreset = '原版三色'
 
 function applyColors () {
   engine.setOptions({ colors: [...colors] })
   $('colorCount').textContent = colors.length + ' 色'
-  // 重绘色块
   const wrap = $('swatches')
   wrap.innerHTML = ''
   colors.forEach((c, i) => {
@@ -126,15 +174,15 @@ function applyColors () {
     inp.addEventListener('input', () => {
       colors[i] = inp.value
       inp.title = inp.value
-      activePreset = ''
-      syncPresetBtns()
+      activeColorPreset = ''
+      syncColorBtns()
       engine.setOptions({ colors: [...colors] })
     })
     inp.addEventListener('contextmenu', (e) => {
       e.preventDefault()
       if (colors.length > 1) {
         colors.splice(i, 1)
-        activePreset = ''
+        activeColorPreset = ''
         applyColors()
       }
     })
@@ -146,59 +194,113 @@ function applyColors () {
     add.title = '添加颜色'
     add.addEventListener('click', () => {
       colors.push('#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0'))
-      activePreset = ''
+      activeColorPreset = ''
       applyColors()
     })
     wrap.appendChild(add)
   }
-  if (colors.length > 1) {
-    // 删除按钮放在每个色块上（右键删除），提示在 tip
-  }
-  syncPresetBtns()
+  syncColorBtns()
 }
 
-function syncPresetBtns () {
+function syncColorBtns () {
   document.querySelectorAll('#presets button').forEach(b => {
-    b.classList.toggle('on', b.dataset.name === activePreset)
+    b.classList.toggle('on', b.dataset.name === activeColorPreset)
   })
 }
 
 const presetsWrap = $('presets')
-Object.keys(PRESETS).forEach(name => {
+Object.keys(COLOR_PRESETS).forEach(name => {
   const b = document.createElement('button')
   b.textContent = name
   b.dataset.name = name
   b.addEventListener('click', () => {
-    colors = [...PRESETS[name]]
-    activePreset = name
+    colors = [...COLOR_PRESETS[name]]
+    activeColorPreset = name
     applyColors()
   })
   presetsWrap.appendChild(b)
 })
 applyColors()
 
+// ---- 效果预设：展开配置 + 同步 UI ----
+let activeFx = ''
+function markCustom () {
+  if (!activeFx) return
+  activeFx = ''
+  document.querySelectorAll('#fxpresets button').forEach(b => b.classList.remove('on'))
+}
+function setVal (id, v, valId, fmt) {
+  const el = $(id)
+  if (el.type === 'checkbox') el.checked = !!v
+  else el.value = v
+  if (valId) $(valId).textContent = fmt ? fmt(v) : v
+}
+function applyFx (name) {
+  engine.stop()
+  if (!name) {
+    // 自定义：回到基础配置
+    const base = { preset: null, bursts: 1, burstInterval: 280, loop: false, launch: false, launchDuration: 500, secondary: 0, shockwave: 0, sound: false, fall: false, trail: false, colorMode: 'random', count: 80, spread: 6, size: 4, gravity: 0.12, duration: 90, shape: 'rect', text: '★', origin: 'center' }
+    engine.setOptions(base)
+    setVal('bursts', 1, 'burstsV'); setVal('burstInterval', 280, 'burstIntervalV')
+    setVal('loop', false); setVal('launch', false); setVal('launchDuration', 500, 'launchDurationV')
+    setVal('secondary', 0, 'secondaryV'); setVal('shockwave', 0, 'shockwaveV')
+    setVal('colorMode', false); setVal('sound', false); setVal('fall', false); setVal('trail', false)
+    setVal('count', 80, 'countV'); setVal('spread', 6, 'spreadV'); setVal('size', 4, 'sizeV')
+    setVal('gravity', 12, 'gravityV', v => (v / 100).toFixed(2)); setVal('shape', 'rect')
+    $('textRow').style.display = 'none'; $('mode').textContent = 'center'
+  } else {
+    engine.setOptions({ preset: name })
+    const o = engine.options
+    setVal('bursts', o.bursts, 'burstsV')
+    setVal('burstInterval', o.burstInterval, 'burstIntervalV')
+    setVal('loop', o.loop)
+    setVal('launch', o.launch)
+    setVal('launchDuration', o.launchDuration, 'launchDurationV')
+    setVal('secondary', o.secondary, 'secondaryV')
+    setVal('shockwave', o.shockwave, 'shockwaveV')
+    setVal('colorMode', o.colorMode === 'gradient')
+    setVal('sound', o.sound)
+    setVal('fall', o.fall)
+    setVal('count', o.count, 'countV')
+    setVal('spread', o.spread, 'spreadV')
+    setVal('size', o.size, 'sizeV')
+    setVal('gravity', Math.round(o.gravity * 100), 'gravityV', v => (v / 100).toFixed(2))
+    setVal('shape', o.shape)
+    $('textRow').style.display = o.shape === 'text' ? 'flex' : 'none'
+    $('mode').textContent = name
+  }
+  activeFx = name
+  document.querySelectorAll('#fxpresets button').forEach(b => b.classList.toggle('on', b.dataset.preset === name))
+  doFire() // 切预设后立即放一轮，直接看到效果
+}
+document.querySelectorAll('#fxpresets button').forEach(b => {
+  b.addEventListener('click', () => applyFx(b.dataset.preset))
+})
+
+// ---- 位置 ----
 let posMode = 'center'
 $('pos').addEventListener('change', e => {
   posMode = e.target.value
-  $('mode').textContent = posMode
+  $('mode').textContent = activeFx || posMode
   if (posMode === 'mouse') {
     engine.setOptions({ followMouse: true })
     $('tip').textContent = '移动鼠标选择位置，点击按钮或画布绽放'
   } else {
     engine.setOptions({ followMouse: false })
     const origins = {
-      center: 'center',
+      center: 'center', top: 'top',
       'top-left': { x: 380, y: 160 },
       'bottom-right': { x: window.innerWidth - 220, y: window.innerHeight - 160 }
     }
     engine.setOptions({ origin: origins[posMode] })
-    $('tip').textContent = posMode === 'center' ? '点击按钮触发 · 也可在画布任意位置点击绽放' : '固定位置绽放已启用'
+    $('tip').textContent = '点击按钮触发 · 也可在画布任意位置点击绽放'
   }
 })
 
 // 点击画布 = 单朵定位绽放；按钮 = 遵循面板的连发/循环配置
-const doFire = (pt) => engine.fire(pt ? { origin: pt, followMouse: false, bursts: 1, loop: false } : {})
+const doFire = (pt) => engine.fire(pt ? { origin: pt, followMouse: false, bursts: 1, loop: false, fall: false } : {})
 $('fire').addEventListener('click', () => doFire())
+$('stop').addEventListener('click', () => engine.stop())
 $('c').addEventListener('click', e => doFire({ x: e.clientX, y: e.clientY }))
 
 // 首屏自动放一次
