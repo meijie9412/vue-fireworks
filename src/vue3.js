@@ -3,14 +3,16 @@
  * 与 Vue2 版逻辑一致，仅 $emit 的 .sync 语义在 Vue3 由 v-model:show 消费。
  */
 import { h } from 'vue'
-import { FireworksEngine } from './engine.js'
+import { FireworksEngine } from '@meijie/fireworks-core'
 import { emitUpdate } from './shared.js'
 
 const PROP_KEYS = [
   'count', 'colors', 'shape', 'gravity', 'friction', 'spread',
   'size', 'trail', 'glow', 'duration', 'origin', 'followMouse',
   'bursts', 'burstInterval', 'loop',
-  'launch', 'launchDuration', 'launchFrom', 'fps'
+  'launch', 'launchDuration', 'launchFrom', 'fps',
+  'preset', 'secondary', 'secondaryAt', 'colorMode', 'sound',
+  'volume', 'text', 'shockwave', 'fall'
 ]
 
 const VueFireworks = {
@@ -19,7 +21,7 @@ const VueFireworks = {
     show: { type: Boolean, default: false },
     count: { type: Number },
     colors: { type: Array },
-    shape: { type: String, validator: v => ['rect', 'circle', 'star'].includes(v) },
+    shape: { type: String, validator: v => ['rect', 'circle', 'star', 'heart', 'text'].includes(v) },
     gravity: { type: Number },
     friction: { type: Number },
     spread: { type: Number },
@@ -35,7 +37,17 @@ const VueFireworks = {
     launch: { type: Boolean, default: false },
     launchDuration: { type: Number, default: 1200 },
     launchFrom: { type: [String, Object], default: 'below' },
-    fps: { type: Number }
+    fps: { type: Number },
+    // 新配置不设 default：undefined 时跳过，避免 default 覆盖 preset 展开值
+    preset: { type: String },
+    secondary: { type: Number },
+    secondaryAt: { type: Number },
+    colorMode: { type: String, validator: v => ['random', 'gradient'].includes(v) },
+    sound: { type: Boolean },
+    volume: { type: Number },
+    text: { type: String },
+    shockwave: { type: Number },
+    fall: { type: Boolean }
   },
   emits: ['update:show', 'start', 'end'],
   data () {
@@ -49,7 +61,7 @@ const VueFireworks = {
     ...PROP_KEYS.reduce((acc, key) => {
       acc[key] = {
         handler (val) {
-          if (this.engine) this.engine.setOptions({ [key]: val })
+          if (val !== undefined && this.engine) this.engine.setOptions({ [key]: val })
         }
       }
       return acc
