@@ -4,7 +4,7 @@ import { resolve } from 'path'
 const entries = {
   index: resolve(__dirname, 'src/vue2.js'),   // 默认入口 = Vue2（向后兼容）
   vue3: resolve(__dirname, 'src/vue3.js'),
-  engine: resolve(__dirname, 'src/engine.js')
+  engine: resolve(__dirname, 'src/engine-compat.js')  // 兼容层：re-export @meijie/fireworks-core
 }
 
 // 通过 FORMAT 环境变量分两次构建，避免 es/cjs 产物互相覆盖
@@ -22,7 +22,7 @@ export default defineConfig({
       fileName: (fmt, entryName) => `${entryName}.${ext}`
     },
     rollupOptions: {
-      external: ['vue'],
+      external: ['vue', '@meijie/fireworks-core'],
       output: {
         exports: 'named',
         chunkFileNames: (chunk) => `shared-${chunk.name}-${format}.${ext}`
