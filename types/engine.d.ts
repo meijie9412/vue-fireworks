@@ -1,20 +1,6 @@
-import { FireworksOptions } from './index'
-
+// Backward-compatible engine types — now provided by @meijie/fireworks-core.
+// Existing `import { FireworksEngine, PRESETS } from '@meijie/vue-fireworks/engine'`
+// keeps type-checking unchanged.
 export * from './index'
-
-export declare class FireworksEngine {
-  constructor(canvas: HTMLCanvasElement, options?: FireworksOptions)
-  options: FireworksOptions
-  /** 运行时更新配置 */
-  setOptions(options?: FireworksOptions): void
-  /** 触发一轮，overrides 临时覆盖配置 */
-  fire(overrides?: FireworksOptions): void
-  /** 立即停止并清空 */
-  stop(): void
-  /** 彻底销毁并解绑事件 */
-  destroy(): void
-  /** 播放结束回调 */
-  onEnd: (() => void) | null
-}
-
-export default FireworksEngine
+export { PRESETS, FireworksEngine } from '@meijie/fireworks-core'
+export { default } from '@meijie/fireworks-core'
