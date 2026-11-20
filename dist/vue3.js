@@ -1,7 +1,7 @@
-import { h as o } from "vue";
-import { FireworksEngine as r } from "./engine.js";
+import { h as i } from "vue";
+import { FireworksEngine as s } from "@meijie/fireworks-core";
 import { e as a } from "./shared-shared-es.js";
-const s = [
+const r = [
   "count",
   "colors",
   "shape",
@@ -20,14 +20,23 @@ const s = [
   "launch",
   "launchDuration",
   "launchFrom",
-  "fps"
-], i = {
+  "fps",
+  "preset",
+  "secondary",
+  "secondaryAt",
+  "colorMode",
+  "sound",
+  "volume",
+  "text",
+  "shockwave",
+  "fall"
+], o = {
   name: "VueFireworks",
   props: {
     show: { type: Boolean, default: !1 },
     count: { type: Number },
     colors: { type: Array },
-    shape: { type: String, validator: (e) => ["rect", "circle", "star"].includes(e) },
+    shape: { type: String, validator: (e) => ["rect", "circle", "star", "heart", "text"].includes(e) },
     gravity: { type: Number },
     friction: { type: Number },
     spread: { type: Number },
@@ -43,7 +52,17 @@ const s = [
     launch: { type: Boolean, default: !1 },
     launchDuration: { type: Number, default: 1200 },
     launchFrom: { type: [String, Object], default: "below" },
-    fps: { type: Number }
+    fps: { type: Number },
+    // 新配置不设 default：undefined 时跳过，避免 default 覆盖 preset 展开值
+    preset: { type: String },
+    secondary: { type: Number },
+    secondaryAt: { type: Number },
+    colorMode: { type: String, validator: (e) => ["random", "gradient"].includes(e) },
+    sound: { type: Boolean },
+    volume: { type: Number },
+    text: { type: String },
+    shockwave: { type: Number },
+    fall: { type: Boolean }
   },
   emits: ["update:show", "start", "end"],
   data() {
@@ -53,14 +72,14 @@ const s = [
     show(e) {
       e ? this.fire() : this.engine && this.engine.stop();
     },
-    ...s.reduce((e, t) => (e[t] = {
+    ...r.reduce((e, t) => (e[t] = {
       handler(n) {
-        this.engine && this.engine.setOptions({ [t]: n });
+        n !== void 0 && this.engine && this.engine.setOptions({ [t]: n });
       }
     }, e), {})
   },
   mounted() {
-    this.engine = new r(this.$refs.canvas, this._engineOptions()), this.engine.onEnd = () => {
+    this.engine = new s(this.$refs.canvas, this._engineOptions()), this.engine.onEnd = () => {
       a(this, !1), this.$emit("end");
     }, this.show && this.fire();
   },
@@ -70,7 +89,7 @@ const s = [
   methods: {
     _engineOptions() {
       const e = {};
-      for (const t of s) {
+      for (const t of r) {
         const n = this[t];
         n !== void 0 && (e[t] = n);
       }
@@ -84,7 +103,7 @@ const s = [
     }
   },
   render() {
-    return o("div", {
+    return i("div", {
       class: "fireworks-container",
       style: {
         position: "fixed",
@@ -93,16 +112,16 @@ const s = [
         pointerEvents: this.followMouse ? "none" : "auto"
       }
     }, [
-      o("canvas", {
+      i("canvas", {
         ref: "canvas",
         style: { width: "100%", height: "100%", display: "block" }
       })
     ]);
   }
 };
-i.install = function(e) {
-  e.component(i.name, i);
+o.install = function(e) {
+  e.component(o.name, o);
 };
 export {
-  i as default
+  o as default
 };
