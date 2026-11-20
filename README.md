@@ -5,7 +5,7 @@ English | [中文](https://github.com/meijie9412/vue-fireworks/blob/main/README.
 [![npm version](https://img.shields.io/npm/v/@meijie/vue-fireworks.svg)](https://www.npmjs.com/package/@meijie/vue-fireworks)
 [![license](https://img.shields.io/npm/l/@meijie/vue-fireworks.svg)](./LICENSE)
 
-A canvas-based fireworks / firework-display component for **Vue 2.6+** and **Vue 3**. Particle count, colors, shape, burst position, trails and glow are all configurable. Supports **fixed-position bursts**, **mouse following**, **multi-burst sequences with looping**, and a realistic **launch phase** powered by projectile physics.
+A canvas-based fireworks / firework-display component for **Vue 2.6+** and **Vue 3**. Particle count, colors, shape, burst position, trails and glow are all configurable. Supports **fixed-position bursts**, **mouse following**, **multi-burst sequences with looping**, a realistic **launch phase** powered by projectile physics, plus **presets**, **secondary explosions**, **shockwave rings**, **color gradients**, **heart/text particles**, **waterfall mode** and **Web Audio sound effects**.
 
 ## Installation
 
@@ -58,7 +58,9 @@ When playback finishes, the component automatically resets `show` to `false`, so
 | `@meijie/vue-fireworks` | Default = Vue 2 build (backwards compatible) |
 | `@meijie/vue-fireworks/vue2` | Explicit Vue 2 entry |
 | `@meijie/vue-fireworks/vue3` | Vue 3 entry |
-| `@meijie/vue-fireworks/engine` | Plain-JS engine, usable without Vue |
+| `@meijie/vue-fireworks/engine` | Backward-compatible re-export of `@meijie/fireworks-core` (unchanged for existing users) |
+
+New projects that only need the engine should install [`@meijie/fireworks-core`](https://www.npmjs.com/package/@meijie/fireworks-core) directly — zero dependencies, no Vue peer requirement.
 
 ## Props
 
@@ -67,7 +69,7 @@ When playback finishes, the component automatically resets `show` to `false`, so
 | `show` | Boolean | `false` | Show / trigger. Pair with `.sync` (Vue 2) or `v-model:show` (Vue 3). |
 | `count` | Number | `60` | Number of particles per burst |
 | `colors` | String[] | `['#FF8201','#2DA6E0','#FF262B']` | Particle color pool (one picked at random per particle) |
-| `shape` | String | `'rect'` | Particle shape: `rect` / `circle` / `star` |
+| `shape` | String | `'rect'` | Particle shape: `rect` / `circle` / `star` / `heart` / `text` |
 | `origin` | String \| Object | `'center'` | Burst origin: `'center'` or `{ x, y }` (CSS pixels inside the canvas) |
 | `followMouse` | Boolean | `false` | Burst at the mouse position; takes precedence over `origin` |
 | `bursts` | Number | `1` | Number of consecutive bursts per trigger (`1` = single, max `50`) |
@@ -84,6 +86,15 @@ When playback finishes, the component automatically resets `show` to `false`, so
 | `trail` | Boolean | `false` | Motion trail (afterimage) |
 | `glow` | Boolean | `false` | Glow effect |
 | `fps` | Number | `60` | Render frame rate |
+| `preset` | String | `null` | One-click effect preset: `show` / `salute` / `waterfall` (see below) |
+| `secondary` | Number | `0` | Number of child particles spawned by a secondary explosion; `0` disables it |
+| `secondaryAt` | Number | `0.5` | When a particle splits, as a fraction of its lifetime (0–1) |
+| `colorMode` | String | `'random'` | `random` picks a random color per particle; `gradient` transitions each particle through the color pool over its lifetime |
+| `sound` | Boolean | `false` | Synthesized Web Audio SFX (launch whoosh + burst bang); no audio files needed |
+| `volume` | Number | `0.35` | Sound volume 0–1 |
+| `text` | String | `'★'` | Glyph rendered when `shape="text"` |
+| `shockwave` | Number | `0` | Shockwave ring max radius in px; `0` disables it |
+| `fall` | Boolean | `false` | Waterfall mode: particles rain down from the top of the canvas |
 
 ### Fixed-position burst
 
@@ -132,6 +143,60 @@ The launch origin defaults to the bottom edge directly beneath the burst point. 
 
 Launch works together with multi-burst and looping: each firework rises independently and bursts in turn.
 
+### Presets (one-click effects)
+
+Three built-in presets bundle a complete set of options. Explicit props you pass alongside a preset take precedence:
+
+```vue
+<!-- Firework show: 6 looping bursts with rocket launches and color gradients -->
+<VueFireworks v-model:show="show" preset="show" />
+<!-- Salute: 8 rapid bursts with secondary explosions and shockwaves -->
+<VueFireworks v-model:show="show" preset="salute" />
+<!-- Waterfall: continuous colored rain from the top -->
+<VueFireworks v-model:show="show" preset="waterfall" />
+```
+
+| Preset | What it sets |
+|---|---|
+| `show` | 6 bursts, 260 ms apart, looping, with launch phase + gradient colors |
+| `salute` | 8 bursts, 70 ms apart, secondary explosions (`secondary: 14`) + shockwave rings |
+| `waterfall` | `fall: true`, long trails, low gravity, gradient colors, looping |
+
+Switching presets at runtime resets prior preset state — call `setOptions`/update the prop with a new `preset` value and the conflicting options are overwritten.
+
+### Secondary explosions & shockwaves
+
+Split each particle into smaller ones partway through its life, and add an expanding ring at every burst:
+
+```vue
+<VueFireworks v-model:show="show" :secondary="16" :secondaryAt="0.5" :shockwave="120" />
+```
+
+Secondary particles never split again (no runaway cascade), and a hard cap of 6000 particles protects against pathological configs.
+
+### Color gradients
+
+```vue
+<VueFireworks v-model:show="show" colorMode="gradient" :colors="['#FF0000','#00FF00','#0000FF']" />
+```
+
+Each particle starts at one pool color and transitions to the next over its lifetime. `colorMode="random"` (default) keeps the original behavior.
+
+### Heart & text particles
+
+```vue
+<VueFireworks v-model:show="show" shape="heart" />
+<VueFireworks v-model:show="show" shape="text" text="🎆" />
+```
+
+### Sound effects
+
+```vue
+<VueFireworks v-model:show="show" :sound="true" :volume="0.4" />
+```
+
+Sounds are synthesized with the Web Audio API (a rising sine sweep on launch, filtered noise on burst) — no audio assets to ship. Browsers require a user gesture before audio can play; if the AudioContext is unavailable the animation still runs silently.
+
 ## Events
 
 | Event | Description |
@@ -153,13 +218,17 @@ fw.value.stop()                                            // stop immediately
 
 ## Using the engine without Vue
 
+The engine now lives in a standalone, zero-dependency package shared by all framework bindings:
+
 ```js
-import { FireworksEngine } from '@meijie/vue-fireworks/engine'
+import { FireworksEngine } from '@meijie/fireworks-core'
 const engine = new FireworksEngine(canvasEl, { count: 80, glow: true })
 engine.onEnd = () => console.log('done')
 engine.fire()
 // engine.setOptions({ shape: 'star' }); engine.stop(); engine.destroy()
 ```
+
+`@meijie/vue-fireworks/engine` remains as a backward-compatible re-export, so existing imports keep working without changes.
 
 ## Development
 
@@ -173,14 +242,14 @@ Layout: `src/engine.js` is a plain-JS particle engine with no Vue dependency; `s
 
 ## Publishing
 
-Releases are published automatically by GitHub Actions via npm Trusted Publishing (OIDC) — no local token required (a Trusted Publisher must first be configured on npmjs.com). Once configured, pushing a version tag triggers the workflow:
+A GitHub Actions workflow (`.github/workflows/publish.yml`) is provided for automated releases. It runs `npm ci` → `npm run build` → `npm test` → `npm publish`, and supports npm Trusted Publishing (OIDC) once you configure a Trusted Publisher on npmjs.com. Pushing a version tag then triggers a release:
 
 ```bash
-git tag v0.4.0
-git push origin v0.4.0
+git tag v0.5.0
+git push origin v0.5.0
 ```
 
-The workflow runs `npm ci` → `npm run build` → `npm test` → `npm publish`.
+Until Trusted Publishing is configured, releases can also be published manually from the maintainer's machine.
 
 ## License
 
