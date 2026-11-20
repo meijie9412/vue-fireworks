@@ -5,7 +5,7 @@
 [![npm version](https://img.shields.io/npm/v/@meijie/vue-fireworks.svg)](https://www.npmjs.com/package/@meijie/vue-fireworks)
 [![license](https://img.shields.io/npm/l/@meijie/vue-fireworks.svg)](./LICENSE)
 
-基于 Canvas 的烟花/礼花特效组件。支持 **Vue 2.6+** 与 **Vue 3**，粒子数量、颜色、形状、绽放位置、拖尾、发光全部可配置，支持**固定位置绽放**、**跟随鼠标**、**连发与循环**，以及带真实抛体物理的**发射过程**。
+基于 Canvas 的烟花/礼花特效组件。支持 **Vue 2.6+** 与 **Vue 3**，粒子数量、颜色、形状、绽放位置、拖尾、发光全部可配置，支持**固定位置绽放**、**跟随鼠标**、**连发与循环**、带真实抛体物理的**发射过程**，以及**预设效果**、**二次爆炸**、**冲击波环**、**颜色渐变**、**心形/文字粒子**、**瀑布模式**和 **Web Audio 音效**。
 
 ## 安装
 
@@ -58,7 +58,9 @@ export default {
 | `@meijie/vue-fireworks` | 默认 = Vue 2 版本（兼容老用户） |
 | `@meijie/vue-fireworks/vue2` | Vue 2 显式入口 |
 | `@meijie/vue-fireworks/vue3` | Vue 3 入口 |
-| `@meijie/vue-fireworks/engine` | 纯 JS 引擎，脱离 Vue 直接用 |
+| `@meijie/vue-fireworks/engine` | `@meijie/fireworks-core` 的向后兼容 re-export（老用户无感） |
+
+只需要引擎的新项目建议直接安装 [`@meijie/fireworks-core`](https://www.npmjs.com/package/@meijie/fireworks-core)——零依赖，也不需要 Vue。
 
 ## Props
 
@@ -67,7 +69,7 @@ export default {
 | `show` | Boolean | `false` | 显示/触发，配合 `.sync`（Vue2）或 `v-model:show`（Vue3） |
 | `count` | Number | `60` | 每轮粒子数量 |
 | `colors` | String[] | `['#FF8201','#2DA6E0','#FF262B']` | 粒子颜色池 |
-| `shape` | String | `'rect'` | 粒子形状：`rect` / `circle` / `star` |
+| `shape` | String | `'rect'` | 粒子形状：`rect` / `circle` / `star` / `heart` / `text` |
 | `origin` | String \| Object | `'center'` | 绽放原点，`'center'` 或 `{ x, y }`（canvas 内 CSS 像素） |
 | `followMouse` | Boolean | `false` | 跟随鼠标绽放，优先级高于 `origin` |
 | `bursts` | Number | `1` | 一次触发连续绽放几朵（1 = 单朵，最大 50） |
@@ -84,6 +86,15 @@ export default {
 | `trail` | Boolean | `false` | 拖尾残影 |
 | `glow` | Boolean | `false` | 发光效果 |
 | `fps` | Number | `60` | 渲染帧率 |
+| `preset` | String | `null` | 一键预设效果：`show` / `salute` / `waterfall`（见下文） |
+| `secondary` | Number | `0` | 二次爆炸分裂出的子粒子数，`0` 关闭 |
+| `secondaryAt` | Number | `0.5` | 二次爆炸触发时机（占粒子寿命 0~1） |
+| `colorMode` | String | `'random'` | `random` 每颗粒子随机取色；`gradient` 生命周期内在颜色池里渐变 |
+| `sound` | Boolean | `false` | Web Audio 合成音效（发射咻声 + 绽放爆响），无需音频文件 |
+| `volume` | Number | `0.35` | 音效音量 0~1 |
+| `text` | String | `'★'` | `shape="text"` 时渲染的文字 |
+| `shockwave` | Number | `0` | 冲击波环最大半径(px)，`0` 关闭 |
+| `fall` | Boolean | `false` | 瀑布模式：粒子从画布顶部向下洒落 |
 
 ### 固定位置绽放
 
@@ -132,6 +143,60 @@ export default {
 
 发射与连发/循环可叠加：每朵都会各自发射升空、依次绽放。
 
+### 预设效果（一键切换）
+
+三个内置预设打包了一整套配置，同时显式传入的属性会覆盖预设值：
+
+```vue
+<!-- 烟花秀：6 朵循环连放 + 发射升空 + 颜色渐变 -->
+<VueFireworks v-model:show="show" preset="show" />
+<!-- 礼炮：8 朵密集绽放 + 二次爆炸 + 冲击波 -->
+<VueFireworks v-model:show="show" preset="salute" />
+<!-- 瀑布：从顶部持续洒落的彩色粒子 -->
+<VueFireworks v-model:show="show" preset="waterfall" />
+```
+
+| 预设 | 配置要点 |
+|---|---|
+| `show` | 6 朵、间隔 260ms、循环，带发射过程 + 渐变色 |
+| `salute` | 8 朵、间隔 70ms，二次爆炸（`secondary: 14`）+ 冲击波环 |
+| `waterfall` | `fall: true`、长拖尾、低重力、渐变色、循环 |
+
+运行时切换预设会重置前一个预设的状态——把 prop 更新为新的 `preset` 值即可，冲突项会被覆盖。
+
+### 二次爆炸与冲击波
+
+让粒子在寿命中途裂变成更小的粒子，并在每次绽放时加一圈扩散的冲击波：
+
+```vue
+<VueFireworks v-model:show="show" :secondary="16" :secondaryAt="0.5" :shockwave="120" />
+```
+
+二次粒子不会再次裂变（杜绝指数级联），并有 6000 粒子的硬上限防止病态配置卡死。
+
+### 颜色渐变
+
+```vue
+<VueFireworks v-model:show="show" colorMode="gradient" :colors="['#FF0000','#00FF00','#0000FF']" />
+```
+
+每颗粒子从颜色池中的一个颜色起步，生命周期内渐变到下一个颜色。`colorMode="random"`（默认）保持原行为。
+
+### 心形与文字粒子
+
+```vue
+<VueFireworks v-model:show="show" shape="heart" />
+<VueFireworks v-model:show="show" shape="text" text="🎆" />
+```
+
+### 音效
+
+```vue
+<VueFireworks v-model:show="show" :sound="true" :volume="0.4" />
+```
+
+音效由 Web Audio API 实时合成（发射时上升扫频、绽放时滤波噪声），无需打包音频资源。浏览器要求用户交互后才能播放音频；若 AudioContext 不可用，动画仍会静默运行。
+
 ## 事件
 
 | 事件 | 说明 |
@@ -153,13 +218,17 @@ fw.value.stop()                                            // 立即停止
 
 ## 脱离 Vue 使用引擎
 
+引擎现已独立成零依赖包，所有框架适配层共用同一份实现：
+
 ```js
-import { FireworksEngine } from '@meijie/vue-fireworks/engine'
+import { FireworksEngine } from '@meijie/fireworks-core'
 const engine = new FireworksEngine(canvasEl, { count: 80, glow: true })
 engine.onEnd = () => console.log('done')
 engine.fire()
 // engine.setOptions({ shape: 'star' }); engine.stop(); engine.destroy()
 ```
+
+`@meijie/vue-fireworks/engine` 仍保留为兼容 re-export，已有代码无需改动。
 
 ## 开发
 
@@ -173,14 +242,14 @@ npm run build   # 构建 dist/（ESM + CJS + 类型声明）
 
 ## 发布
 
-发布由 GitHub Actions 通过 npm Trusted Publishing (OIDC) 自动完成，无需本地 token（需先在 npm 网页配置 Trusted Publisher）。配置完成后，维护者推送版本标签即触发：
+项目提供 GitHub Actions workflow（`.github/workflows/publish.yml`）用于自动发布，依次执行 `npm ci` → `npm run build` → `npm test` → `npm publish`，并支持 npm Trusted Publishing (OIDC)（需先在 npm 网页配置 Trusted Publisher）。配置完成后，推送版本标签即触发：
 
 ```bash
-git tag v0.4.0
-git push origin v0.4.0
+git tag v0.5.0
+git push origin v0.5.0
 ```
 
-workflow 会依次执行 `npm ci` → `npm run build` → `npm test` → `npm publish`。
+在 Trusted Publishing 配置好之前，也可以由维护者在本地手动发布。
 
 ## License
 
